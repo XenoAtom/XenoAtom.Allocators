@@ -1,0 +1,32 @@
+﻿TLSF Allocator
+==============
+
+Alignment: 64
+
+Chunks:
+-------
+Chunk MemoryChunkId(0x0):
+  BaseAddress: MemoryAddress(0xFE00120000000000)
+  Size: MemorySize(131072)
+  TotalAllocated: MemorySize(0)
+  UsedBlockCount: 0
+  FreeBlockCount: 1
+  FirstBlockInPhysicalOrder: 1
+
+Bins: 0b0000_0000_0000_0000_0000_0000_1000_0000
+----------------------------------------
+Bin L1 (7): [0x10000, 0x1ffff[ -> Mask: 0b0000_0000_0000_0001
+  Bin L2 (0): [0x10000, 0x10fff[ -> FirstFreeBlock: 1
+
+Blocks:
+-------
+Block 0: Available
+
+Block 1:
+  ChunkIndex: 0
+  OffsetIntoChunk: 0
+  Size: 131072
+  Status: Free
+  -1 <- FreeLink -> -1
+  -1 <- PhysicalLink -> -1
+
