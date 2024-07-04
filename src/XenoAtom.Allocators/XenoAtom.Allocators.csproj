@@ -36,6 +36,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="XenoAtom.Collections" Version="1.0.0" />
+    <PackageReference Include="XenoAtom.Collections" Version="1.1.0" />
   </ItemGroup>
 </Project>
