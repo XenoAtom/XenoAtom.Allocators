@@ -4,9 +4,21 @@
 
 namespace XenoAtom.Allocators;
 
+/// <summary>
+/// Base interface for a memory allocator of chunks.
+/// </summary>
 public interface IMemoryChunkAllocator
 {
+    /// <summary>
+    /// Allocates a new chunk of memory.
+    /// </summary>
+    /// <param name="minSize">The minimum size. Usually the size returned by an allocator can be much bigger.</param>
+    /// <returns>The allocated memory chunk.</returns>
     MemoryChunk AllocateChunk(MemorySize minSize);
 
+    /// <summary>
+    /// Frees a chunk of memory.
+    /// </summary>
+    /// <param name="chunk">The original chunk that was allocated.</param>
     void FreeChunk(in MemoryChunk chunk);
 }

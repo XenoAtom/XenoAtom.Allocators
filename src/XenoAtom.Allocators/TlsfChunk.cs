@@ -6,6 +6,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace XenoAtom.Allocators;
 
+/// <summary>
+/// Represents a chunk allocated from a <see cref="TlsfAllocator"/>.
+/// </summary>
 public readonly struct TlsfChunk
 {
     private readonly TlsfAllocator.Chunk _chunk;
@@ -16,9 +19,18 @@ public readonly struct TlsfChunk
     [UnscopedRef]
     public ref readonly MemoryChunk Info => ref _chunk.Info;
 
+    /// <summary>
+    /// Gets the total allocated size of this chunk.
+    /// </summary>
     public MemorySize TotalAllocated => _chunk.TotalAllocated;
 
+    /// <summary>
+    /// Gets the number of blocks used.
+    /// </summary>
     public uint UsedBlockCount => _chunk.UsedBlockCount;
 
+    /// <summary>
+    /// Gets the number of free blocks.
+    /// </summary>
     public uint FreeBlockCount => _chunk.FreeBlockCount;
 }

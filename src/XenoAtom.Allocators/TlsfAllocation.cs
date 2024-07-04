@@ -4,4 +4,30 @@
 
 namespace XenoAtom.Allocators;
 
-public readonly record struct TlsfAllocation(uint BlockIndex, MemoryAddress Address, MemorySize Size);
+/// <summary>
+/// An allocation from a <see cref="TlsfAllocator"/> returned by <see cref="TlsfAllocator.Allocate"/>.
+/// </summary>
+public readonly record struct TlsfAllocation
+{
+    internal TlsfAllocation(uint blockIndex, MemoryAddress address, MemorySize size)
+    {
+        BlockIndex = blockIndex;
+        Address = address;
+        Size = size;
+    }
+
+    /// <summary>
+    /// Gets the index of the block allocated (used internally by the allocator).
+    /// </summary>
+    internal readonly uint BlockIndex;
+
+    /// <summary>
+    /// Gets the address of the allocated block.
+    /// </summary>
+    public readonly MemoryAddress Address;
+
+    /// <summary>
+    /// Gets the size of the allocated block.
+    /// </summary>
+    public readonly MemorySize Size;
+}
