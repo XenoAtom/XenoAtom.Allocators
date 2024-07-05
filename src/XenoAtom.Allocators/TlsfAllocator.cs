@@ -35,7 +35,7 @@ public sealed unsafe class TlsfAllocator
     private readonly uint _alignment;
     private UnsafeList<Chunk> _chunks;
     private UnsafeList<Block> _blocks;
-    private UnsafeList<int> _availableBlocks;
+    private int _indexToFirstAvailableBlock;
     private BinsDirectory _bins;
 
     // Constants
@@ -74,7 +74,7 @@ public sealed unsafe class TlsfAllocator
         _alignment = Math.Max(MinAlignment, alignment);
         _chunks = new UnsafeList<Chunk>((int)config.PreAllocatedChunkCount);
         _blocks = new UnsafeList<Block>((int)config.PreAllocatedBlockCount);
-        _availableBlocks = new UnsafeList<int>((int)config.PreAllocatedAvailableBlockCount);
+        _indexToFirstAvailableBlock = -1;
         _bins = new BinsDirectory();
     }
 
@@ -110,7 +110,7 @@ public sealed unsafe class TlsfAllocator
             freeBlock.Size = newFreeBlockSize;
 
             // Create a new block
-            var usedBlockIndex = _availableBlocks.Count > 0 ? _availableBlocks.Pop() : _blocks.Count;
+            var usedBlockIndex = GetNextAvailableBlockIndex();
             ref var usedBlock = ref _blocks.UnsafeGetOrCreate(usedBlockIndex);
             chunk.UsedBlockCount++;
             // We need to rebind the free block as we might have allocate a new block with UnsafeGetOrCreate
@@ -167,6 +167,38 @@ public sealed unsafe class TlsfAllocator
         }
     }
 
+    private int GetNextAvailableBlockIndex()
+    {
+        var index = _indexToFirstAvailableBlock;
+        if (index < 0)
+        {
+            index = _blocks.Count; // next index
+        }
+        else
+        {
+            _indexToFirstAvailableBlock = GetBlockAt(index).FreeLink.Next;
+        }
+        return index;
+    }
+
+    private void MarkBlockAsAvailable(ref Block block, int blockIndex)
+    {
+        block = default;
+        block.IsAvailable = true;
+        block.FreeLink = BlockLinks.Undefined;
+        block.PhysicalLink = BlockLinks.Undefined;
+
+        var previousAvailableIndex = _indexToFirstAvailableBlock;
+        _indexToFirstAvailableBlock = blockIndex;
+        block.FreeLink.Next = previousAvailableIndex;
+    }
+
+    private ref Block GetBlockAt(int index)
+    {
+        Debug.Assert(index >= 0 && index < _blocks.Count);
+        return ref _blocks.UnsafeGetRefAt(index);
+    }
+    
     /// <summary>
     /// Frees an allocation.
     /// </summary>
@@ -214,7 +246,7 @@ public sealed unsafe class TlsfAllocator
 
                 chunk.FreeBlockCount--;
                 Debug.Assert(chunk.FreeBlockCount >= 0);
-                _availableBlocks.Add(previousBlockIndex);
+                MarkBlockAsAvailable(ref previousBlock, previousBlockIndex);
             }
         }
 
@@ -239,7 +271,7 @@ public sealed unsafe class TlsfAllocator
 
                 chunk.FreeBlockCount--;
                 Debug.Assert(chunk.FreeBlockCount >= 0);
-                _availableBlocks.Add(nextBlockIndex);
+                MarkBlockAsAvailable(ref nextBlock, nextBlockIndex);
             }
         }
 
@@ -259,7 +291,7 @@ public sealed unsafe class TlsfAllocator
         }
         _chunks.Clear();
         _blocks.Clear();
-        _availableBlocks.Clear();
+        _indexToFirstAvailableBlock = -1;
         _bins = default;
         _bins.Initialize();
     }
@@ -333,7 +365,13 @@ public sealed unsafe class TlsfAllocator
 
         buffer.AppendLine($"Blocks: {_blocks.Count,3}");
         buffer.AppendLine("-----------");
-        var availableBlocks = new HashSet<int>(_availableBlocks);
+        var availableBlocks = new HashSet<int>();
+        var nextAvailableIndex = _indexToFirstAvailableBlock;
+        while (nextAvailableIndex >= 0)
+        {
+            availableBlocks.Add(nextAvailableIndex);
+            nextAvailableIndex = GetBlockAt(nextAvailableIndex).FreeLink.Next;
+        }
 
         const int C1 = 6;
         const int C2 = 5;
@@ -466,7 +504,7 @@ public sealed unsafe class TlsfAllocator
             chunkEntry = default;
 
             ref var chunk = ref chunkEntry.Info;
-            blockIndex = _availableBlocks.Count > 0 ? _availableBlocks.Pop() : _blocks.Count;
+            blockIndex = GetNextAvailableBlockIndex();
             chunkEntry.FreeBlockCount++;
             chunkEntry.FirstBlockInPhysicalOrder = blockIndex;
 
@@ -658,7 +696,7 @@ public sealed unsafe class TlsfAllocator
         [ExcludeFromCodeCoverage]
         private string ToDebuggerDisplay()
         {
-            return $"Offset: {OffsetIntoChunk}, Size: {Size}, End: {OffsetIntoChunk + Size}, IsUsed: {IsUsed}, FreeLink: {FreeLink.Previous}<->{FreeLink.Next},  PhysicalLink: {PhysicalLink.Previous} <-> {PhysicalLink.Next}";
+            return $"Offset: {OffsetIntoChunk}, Size: {Size}, End: {OffsetIntoChunk + Size}, Status: {(IsUsed ? "Used":IsAvailable?"Avail":"Free")}, FreeLink: {FreeLink.Previous}<->{FreeLink.Next},  PhysicalLink: {PhysicalLink.Previous} <-> {PhysicalLink.Next}";
         }
         
         public bool IsUsed
@@ -667,6 +705,14 @@ public sealed unsafe class TlsfAllocator
             get => (_flags & 1) != 0;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _flags = value ? 1U : 0;
+        }
+
+        public bool IsAvailable
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (_flags & 2) != 0;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => _flags = value ? 2U : 0;
         }
     }
 
