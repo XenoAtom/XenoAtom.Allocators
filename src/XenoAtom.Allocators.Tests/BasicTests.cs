@@ -332,7 +332,52 @@ public partial class BasicTests
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
     }
-    
+
+    [TestMethod]
+    public async Task Test64Allocations()
+    {
+        var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
+
+        MemorySize alignment = 64;
+        var tlsf = new TlsfAllocator(allocator, alignment);
+
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+
+        var allocations = new TlsfAllocation[64];
+        for (var i = 0; i < 64; i++)
+        {
+            allocations[i] = tlsf.Allocate(512);
+        }
+        await VerifyStep(tlsf, "01-Allocate");
+        
+        for (var i = 0; i < 64; i++)
+        {
+            tlsf.Free(allocations[i]);
+        }
+
+        await VerifyStep(tlsf, "02-Free");
+
+
+        for (var i = 0; i < 64; i++)
+        {
+            allocations[i] = tlsf.Allocate(512);
+        }
+        await VerifyStep(tlsf, "03-Reallocate");
+
+
+        for (var i = 0; i < 64; i++)
+        {
+            tlsf.Free(allocations[i]);
+        }
+
+        await VerifyStep(tlsf, "04-Free");
+        
+        // Resets the allocator (free chunks)
+        tlsf.Reset();
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+        Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+    }
+
     private async Task VerifyStep(TlsfAllocator tlsf, string stepName)
     {
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
