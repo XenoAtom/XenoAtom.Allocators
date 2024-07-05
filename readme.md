@@ -21,7 +21,7 @@ For more details on how to use XenoAtom.Allocators, please visit the [user guide
 
 ## 📊 Benchmarks
 
-The benchmark is available in the [XenoAtom.Allocators.Bench](src/XenoAtom.Allocators.Bench/Program.cs).
+The benchmark is available in the [XenoAtom.Allocators.Bench](src/XenoAtom.Allocators.Bench/BenchAllocator.cs).
 
 It is comparing the performance of the TLSF allocator against the standard `malloc`/`free` from the C runtime library.
 
