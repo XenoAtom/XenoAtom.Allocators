@@ -154,7 +154,7 @@ public sealed unsafe class TlsfAllocator
                 InsertBlockIntoFreeList(ref freeBlock, freeBlockIndex, newFirstLevelIndex, newSecondLevelIndex);
             }
 
-            return new TlsfAllocation((uint)usedBlockIndex, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            return new TlsfAllocation(new((uint)usedBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
         else
         {
@@ -168,25 +168,25 @@ public sealed unsafe class TlsfAllocator
             chunk.FreeBlockCount--;
             Debug.Assert(chunk.FreeBlockCount >= 0);
             
-            return new TlsfAllocation((uint)freeBlockIndex, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            return new TlsfAllocation(new((uint)freeBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
     }
 
     /// <summary>
     /// Frees an allocation.
     /// </summary>
-    /// <param name="allocation">An allocation unit to free.</param>
-    public void Free(TlsfAllocation allocation)
+    /// <param name="allocationToken">The allocation token to free.</param>
+    public void Free(TlsfAllocationToken allocationToken)
     {
-        int blockIndex = (int)allocation.BlockIndex;
+        int blockIndex = (int)allocationToken.BlockIndex;
         if ((uint)blockIndex >= (uint)_blockCount)
         {
-            throw new ArgumentException($"The block index {blockIndex} is out of range", nameof(allocation));
+            throw new ArgumentException($"The block index {blockIndex} is out of range", nameof(allocationToken));
         }
         ref var block = ref GetBlockAt(blockIndex);
         if (!block.IsUsed)
         {
-            throw new ArgumentException($"The block at index {blockIndex} is already free", nameof(allocation));
+            throw new ArgumentException($"The block at index {blockIndex} is already free", nameof(allocationToken));
         }
         block.IsUsed = false;
 

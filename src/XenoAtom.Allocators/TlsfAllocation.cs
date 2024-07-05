@@ -9,9 +9,9 @@ namespace XenoAtom.Allocators;
 /// </summary>
 public readonly record struct TlsfAllocation
 {
-    internal TlsfAllocation(uint blockIndex, MemoryAddress address, MemorySize size)
+    internal TlsfAllocation(TlsfAllocationToken token, MemoryAddress address, MemorySize size)
     {
-        BlockIndex = blockIndex;
+        Token = token;
         Address = address;
         Size = size;
     }
@@ -19,7 +19,7 @@ public readonly record struct TlsfAllocation
     /// <summary>
     /// Gets the index of the block allocated (used internally by the allocator).
     /// </summary>
-    internal readonly uint BlockIndex;
+    public readonly TlsfAllocationToken Token;
 
     /// <summary>
     /// Gets the address of the allocated block.
@@ -30,4 +30,9 @@ public readonly record struct TlsfAllocation
     /// Gets the size of the allocated block.
     /// </summary>
     public readonly MemorySize Size;
+
+    /// <summary>
+    /// Implicit conversion to <see cref="TlsfAllocationToken"/>.
+    /// </summary>
+    public static implicit operator TlsfAllocationToken (TlsfAllocation allocation) => allocation.Token;
 }
