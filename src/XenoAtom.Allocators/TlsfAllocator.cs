@@ -280,29 +280,29 @@ public sealed unsafe class TlsfAllocator
         buffer.AppendLine();
         buffer.AppendLine($"Alignment: {_alignment}");
         buffer.AppendLine();
-        buffer.AppendLine($"Chunks: {_chunks.Count,2}");
-        buffer.AppendLine("----------");
-        for (int i = 0; i < _chunks.Count; i++)
-        {
-            ref var chunk = ref _chunks[i];
-            buffer.AppendLine($"Chunk {chunk.Info.Id}:");
-            buffer.AppendLine($"  BaseAddress: {chunk.Info.BaseAddress}");
-            buffer.AppendLine($"  Size: {chunk.Info.Size}");
-            buffer.AppendLine($"  TotalAllocated: {chunk.TotalAllocated}");
-            buffer.AppendLine($"  UsedBlockCount: {chunk.UsedBlockCount}");
-            buffer.AppendLine($"  FreeBlockCount: {chunk.FreeBlockCount}");
-            buffer.AppendLine($"  FirstBlockInPhysicalOrder: {chunk.FirstBlockInPhysicalOrder}");
-            buffer.AppendLine();
-        }
-
         if (_chunks.Count == 0)
         {
             buffer.AppendLine("No chunks allocated");
             buffer.AppendLine();
         }
+        else
+        {
+            buffer.AppendLine($"Chunks: {_chunks.Count,2}");
+            buffer.AppendLine("----------");
+            for (int i = 0; i < _chunks.Count; i++)
+            {
+                ref var chunk = ref _chunks[i];
+                buffer.AppendLine($"Chunk {chunk.Info.Id}:");
+                buffer.AppendLine($"  BaseAddress: {chunk.Info.BaseAddress}");
+                buffer.AppendLine($"  Size: {chunk.Info.Size}");
+                buffer.AppendLine($"  TotalAllocated: {chunk.TotalAllocated}");
+                buffer.AppendLine($"  UsedBlockCount: {chunk.UsedBlockCount}");
+                buffer.AppendLine($"  FreeBlockCount: {chunk.FreeBlockCount}");
+                buffer.AppendLine($"  FirstBlockInPhysicalOrder: {chunk.FirstBlockInPhysicalOrder}");
+                buffer.AppendLine();
+            }
+        }
 
-        buffer.AppendLine($"Bins: 0b{ToBin(_bins.FirstLevelBitmap)}");
-        buffer.AppendLine($"--------{new('-', 32)}");
 
         bool hasBins = false;
         for (int i = 0; i < BinCount; i++)
@@ -314,6 +314,12 @@ public sealed unsafe class TlsfAllocator
             var mask2 = _bins.GetSecondLevelBitmap(i);
             if (mask2 != 0)
             {
+                if (!hasBins)
+                {
+                    buffer.AppendLine($"Bins: 0b{ToBin(_bins.FirstLevelBitmap)}");
+                    buffer.AppendLine($"--------{new('-', 32)}");
+                }
+
                 buffer.AppendLine($"Bin L1 ({i}): [0x{firstLevelBinSizeStart:x}, 0x{firstLevelBinSizeEnd - 1:x}[ -> Mask: 0b{ToBin(mask2)}");
                 for (int j = 0; j < SubBinCount; j++)
                 {
@@ -336,60 +342,64 @@ public sealed unsafe class TlsfAllocator
         }
         buffer.AppendLine();
 
-        buffer.AppendLine($"Blocks: {_blockCount,3}");
-        buffer.AppendLine("-----------");
-        var availableBlocks = new HashSet<int>();
-        var nextAvailableIndex = _indexToFirstAvailableBlock;
-        while (nextAvailableIndex >= 0)
-        {
-            availableBlocks.Add(nextAvailableIndex);
-            nextAvailableIndex = GetBlockAt(nextAvailableIndex).FreeLink.Next;
-        }
-
-        const int C1 = 6;
-        const int C2 = 5;
-        const int C3 = 6;
-        const int C4 = 6;
-        const int C5 = 6;
-        const int C6 = 14;
-        const int C7 = 14;
-
-        buffer.AppendLine($"{"Block",C1} {"Chunk",C2} {"Offset",C3} {"Size", C4} {"Status", C5} {"Free Links", C6} {"Phys Links", C7}");
-
-        int firstBlockAvailableIndex = -1;
-        for (int i = 0; i < _blockCount; i++)
-        {
-            if (availableBlocks.Contains(i))
-            {
-                if (firstBlockAvailableIndex < 0)
-                {
-                    firstBlockAvailableIndex = i;
-                }
-            }
-            else
-            {
-                if (firstBlockAvailableIndex >= 0)
-                {
-                    var length = i - firstBlockAvailableIndex;
-                    buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{i-1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
-                    firstBlockAvailableIndex = -1;
-                }
-
-                ref var block = ref GetBlockAt(i);
-                buffer.AppendLine($"{$"[{i}]",C1} {$"{block.ChunkIndex}",C2} {block.OffsetIntoChunk,C3} {block.Size,C4} {(block.IsUsed ? "Used" : "Free"),C5} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",C6} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",C7}");
-            }
-        }
-
-        if (firstBlockAvailableIndex >= 0)
-        {
-            var length = _blockCount - firstBlockAvailableIndex;
-            buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{_blockCount - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
-        }
-
         if (_blockCount == 0)
         {
             buffer.AppendLine("No blocks allocated");
             buffer.AppendLine();
+        }
+        else
+        {
+
+            buffer.AppendLine($"Blocks: {_blockCount,3}");
+            buffer.AppendLine("-----------");
+            var availableBlocks = new HashSet<int>();
+            var nextAvailableIndex = _indexToFirstAvailableBlock;
+            while (nextAvailableIndex >= 0)
+            {
+                availableBlocks.Add(nextAvailableIndex);
+                nextAvailableIndex = GetBlockAt(nextAvailableIndex).FreeLink.Next;
+            }
+
+            const int C1 = 6;
+            const int C2 = 5;
+            const int C3 = 6;
+            const int C4 = 6;
+            const int C5 = 6;
+            const int C6 = 14;
+            const int C7 = 14;
+
+            buffer.AppendLine($"{"Block",C1} {"Chunk",C2} {"Offset",C3} {"Size",C4} {"Status",C5} {"Free Links",C6} {"Phys Links",C7}");
+
+            int firstBlockAvailableIndex = -1;
+            for (int i = 0; i < _blockCount; i++)
+            {
+                if (availableBlocks.Contains(i))
+                {
+                    if (firstBlockAvailableIndex < 0)
+                    {
+                        firstBlockAvailableIndex = i;
+                    }
+                }
+                else
+                {
+                    if (firstBlockAvailableIndex >= 0)
+                    {
+                        var length = i - firstBlockAvailableIndex;
+                        buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{i - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
+                        firstBlockAvailableIndex = -1;
+                    }
+
+                    ref var block = ref GetBlockAt(i);
+                    buffer.AppendLine(
+                        $"{$"[{i}]",C1} {$"{block.ChunkIndex}",C2} {block.OffsetIntoChunk,C3} {block.Size,C4} {(block.IsUsed ? "Used" : "Free"),C5} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",C6} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",C7}");
+                }
+            }
+
+            if (firstBlockAvailableIndex >= 0)
+            {
+                var length = _blockCount - firstBlockAvailableIndex;
+                buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{_blockCount - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
+            }
         }
         
         static string ToBin<T>(T number) where T : unmanaged, IBinaryInteger<T>

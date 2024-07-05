@@ -1,0 +1,11 @@
+﻿TLSF Allocator
+==============
+
+Alignment: 64
+
+No chunks allocated
+
+No bins allocated
+
+No blocks allocated
+

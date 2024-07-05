@@ -13,8 +13,6 @@ Chunk MemoryChunkId(0x0):
   FreeBlockCount: 0
   FirstBlockInPhysicalOrder: 0
 
-Bins: 0b0000_0000_0000_0000_0000_0000_0000_0000
-----------------------------------------
 No bins allocated
 
 Blocks:   1

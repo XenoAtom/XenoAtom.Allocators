@@ -52,6 +52,8 @@ public partial class BasicTests
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await VerifyStep(tlsf, "03-Reset");
     }
 
     [TestMethod]
@@ -109,6 +111,121 @@ public partial class BasicTests
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
 
         await VerifyStep(tlsf, "02-Free Allocations");
+        
+        // Resets the allocator (free chunks)
+        tlsf.Reset();
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+        Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+    }
+    
+    [TestMethod]
+    public async Task TestAllocateInterleavedFree()
+    {
+        var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
+
+        var tlsf = new TlsfAllocator(allocator, 64);
+
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+
+        var allocation1 = tlsf.Allocate(64);
+        var allocation2 = tlsf.Allocate(64);
+        var allocation3 = tlsf.Allocate(64);
+        var allocation4 = tlsf.Allocate(64);
+
+        // Dump intermediate result
+        await VerifyStep(tlsf, "01-Allocations");
+
+        // Free allocation 2
+        // Free allocation 4
+        tlsf.Free(allocation2);
+        tlsf.Free(allocation4);
+
+        await VerifyStep(tlsf, "02-Free24");
+
+        // Free allocation 2
+        // Free allocation 4
+        tlsf.Free(allocation1);
+        tlsf.Free(allocation3);
+
+        await VerifyStep(tlsf, "03-Free13");
+
+        // Resets the allocator (free chunks)
+        tlsf.Reset();
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+        Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+    }
+
+    [TestMethod]
+    public async Task TestAllocateInterleavedFree2()
+    {
+        var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
+
+        var tlsf = new TlsfAllocator(allocator, 64);
+
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+
+        var allocation1 = tlsf.Allocate(64);
+        var allocation2 = tlsf.Allocate(64);
+        var allocation3 = tlsf.Allocate(64);
+
+        // Dump intermediate result
+        await VerifyStep(tlsf, "01-Allocations");
+
+        // Free allocation 2
+        tlsf.Free(allocation2);
+
+        await VerifyStep(tlsf, "02-Free2");
+
+        // Free allocation 3
+        tlsf.Free(allocation3);
+
+        await VerifyStep(tlsf, "03-Free3");
+
+        // Free allocation 1
+        tlsf.Free(allocation1);
+
+        await VerifyStep(tlsf, "04-Free1");
+
+
+        // Resets the allocator (free chunks)
+        tlsf.Reset();
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+        Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+    }
+
+
+    [TestMethod]
+    public async Task TestAllocateInterleavedFreeAndRealloc()
+    {
+        var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
+
+        var tlsf = new TlsfAllocator(allocator, 64);
+
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+
+        var allocation1 = tlsf.Allocate(64);
+        var allocation2 = tlsf.Allocate(64);
+        var allocation3 = tlsf.Allocate(64);
+
+        // Dump intermediate result
+        await VerifyStep(tlsf, "01-Allocations");
+
+        // Free allocation 2
+        tlsf.Free(allocation2);
+
+        await VerifyStep(tlsf, "02-Free2");
+
+        // Allocation 2
+        allocation2 = tlsf.Allocate(64);
+
+        await VerifyStep(tlsf, "03-Allocate2");
+
+        // Free allocation 1
+        tlsf.Free(allocation3);
+        tlsf.Free(allocation2);
+        tlsf.Free(allocation1);
+
+        await VerifyStep(tlsf, "04-Free321");
         
         // Resets the allocator (free chunks)
         tlsf.Reset();
