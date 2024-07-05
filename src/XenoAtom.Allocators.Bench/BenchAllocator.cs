@@ -13,12 +13,18 @@ public class BenchAllocator
     private static readonly ChunkAllocator _instance = new ChunkAllocator();
 
     private TlsfAllocator _tlsfAllocator;
-    private UnsafeList<TlsfAllocation>.N64 _tlsfLocalList = new();
-    private UnsafeList<nint>.N64 _libcLocalList = new();
+    private UnsafeList<TlsfAllocation> _tlsfLocalList = new();
+    private UnsafeList<nint> _libcLocalList = new();
+    private Random _random = new Random();
+
+    private static int[] AllocSizes = [64, 96, 150, 200, 400, 1024, 4096];
+    
+    private const int AllocationCount = 2048;
 
     [GlobalSetup]
     public void Setup()
     {
+        _random = new Random(42);
         Console.WriteLine("Setup");
         _tlsfAllocator = new TlsfAllocator(_instance, 64);
     }
@@ -30,17 +36,19 @@ public class BenchAllocator
         _tlsfAllocator.Reset();
     }
 
+    private uint GetNextRandomSize() => (uint)AllocSizes[_random.Next(AllocSizes.Length)];
+
     [Benchmark]
     public void Tlsf()
     {
         ref var localList = ref _tlsfLocalList;
         localList.Clear();
 
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < AllocationCount; i++)
         {
             lock (_tlsfAllocator) // Make it more fair to the libc benchmark
             {
-                var allocate = _tlsfAllocator.Allocate(64);
+                var allocate = _tlsfAllocator.Allocate(GetNextRandomSize());
                 localList.Add(allocate);
             }
         }
@@ -60,36 +68,35 @@ public class BenchAllocator
         ref var localList = ref _libcLocalList;
         localList.Clear();
 
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < AllocationCount; i++)
         {
-            var allocate = NativeMemory.Alloc(64);
+            var allocate = NativeMemory.AlignedAlloc(GetNextRandomSize(), 64);
             localList.Add((nint)allocate);
         }
 
-        for (int i = 0; i < 64; i++)
+        for (int i = 0; i < AllocationCount; i++)
         {
-            NativeMemory.Free((void*)localList[i]);
+            NativeMemory.AlignedFree((void*)localList[i]);
         }
     }
 
     private unsafe class ChunkAllocator : IMemoryChunkAllocator
     {
-        private List<MemoryChunk> _chunks = new List<MemoryChunk>();
+        private Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
         private const int ChunkSize = 65536;
         
         public MemoryChunk AllocateChunk(MemorySize minSize)
         {
-            Console.WriteLine("Allocate 64KB");
             var address = NativeMemory.Alloc(ChunkSize);
             var chunk = new MemoryChunk((ulong)_chunks.Count, (ulong)address, ChunkSize);
-            _chunks.Add(chunk);
+            _chunks.Add(_chunks.Count, chunk);
             return chunk;
         }
 
         public void FreeChunk(in MemoryChunk chunk)
         {
             NativeMemory.Free((void*)(ulong)chunk.BaseAddress);
-            _chunks.RemoveAt((int)chunk.Id.Value);
+            _chunks.Remove((int)chunk.Id.Value);
         }
     }
 }

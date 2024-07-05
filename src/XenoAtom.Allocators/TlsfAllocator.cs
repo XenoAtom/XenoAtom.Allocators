@@ -34,7 +34,8 @@ public sealed unsafe class TlsfAllocator
     private readonly IMemoryChunkAllocator _context;
     private readonly uint _alignment;
     private UnsafeList<Chunk> _chunks;
-    private UnsafeList<Block> _blocks;
+    private UnsafeList<Block[]> _groupedBlocks;
+    private int _blockCount;
     private int _indexToFirstAvailableBlock;
     private BinsDirectory _bins;
 
@@ -45,6 +46,10 @@ public sealed unsafe class TlsfAllocator
     private const int SubBinCount = 1 << SubBinsLog2;
     private const int TotalBinCount = BinCount * SubBinCount;
     private const int MinAlignment = 1 << (BaseBin0Log2 - SubBinsLog2); // Minimum alignment is 64 bytes
+
+    private const int GroupedBlockCountLog2 = 10; // TODO: Should we make this configurable? (It might not help with optimizations in that case for indexing a block)
+    private const int GroupedBlockCount = 1 << GroupedBlockCountLog2;
+    private const int GroupedBlockMask = GroupedBlockCount - 1;
 
     /// <summary>
     /// Creates a new instance of <see cref="TlsfAllocator"/>.
@@ -73,7 +78,7 @@ public sealed unsafe class TlsfAllocator
         _context = context;
         _alignment = Math.Max(MinAlignment, alignment);
         _chunks = new UnsafeList<Chunk>((int)config.PreAllocatedChunkCount);
-        _blocks = new UnsafeList<Block>((int)config.PreAllocatedBlockCount);
+        _groupedBlocks = new UnsafeList<Block[]>();
         _indexToFirstAvailableBlock = -1;
         _bins = new BinsDirectory();
     }
@@ -258,7 +263,7 @@ public sealed unsafe class TlsfAllocator
             _context.FreeChunk(_chunks[i].Info);
         }
         _chunks.Clear();
-        _blocks.Clear();
+        _blockCount = 0;
         _indexToFirstAvailableBlock = -1;
         _bins = default;
         _bins.Initialize();
@@ -331,7 +336,7 @@ public sealed unsafe class TlsfAllocator
         }
         buffer.AppendLine();
 
-        buffer.AppendLine($"Blocks: {_blocks.Count,3}");
+        buffer.AppendLine($"Blocks: {_blockCount,3}");
         buffer.AppendLine("-----------");
         var availableBlocks = new HashSet<int>();
         var nextAvailableIndex = _indexToFirstAvailableBlock;
@@ -352,7 +357,7 @@ public sealed unsafe class TlsfAllocator
         buffer.AppendLine($"{"Block",C1} {"Chunk",C2} {"Offset",C3} {"Size", C4} {"Status", C5} {"Free Links", C6} {"Phys Links", C7}");
 
         int firstBlockAvailableIndex = -1;
-        for (int i = 0; i < _blocks.Count; i++)
+        for (int i = 0; i < _blockCount; i++)
         {
             if (availableBlocks.Contains(i))
             {
@@ -369,19 +374,19 @@ public sealed unsafe class TlsfAllocator
                     buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{i-1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
                     firstBlockAvailableIndex = -1;
                 }
-                
-                ref var block = ref _blocks[i];
+
+                ref var block = ref GetBlockAt(i);
                 buffer.AppendLine($"{$"[{i}]",C1} {$"{block.ChunkIndex}",C2} {block.OffsetIntoChunk,C3} {block.Size,C4} {(block.IsUsed ? "Used" : "Free"),C5} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",C6} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",C7}");
             }
         }
 
         if (firstBlockAvailableIndex >= 0)
         {
-            var length = _blocks.Count - firstBlockAvailableIndex;
-            buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{_blocks.Count - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
+            var length = _blockCount - firstBlockAvailableIndex;
+            buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{_blockCount - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
         }
 
-        if (_blocks.Count == 0)
+        if (_blockCount == 0)
         {
             buffer.AppendLine("No blocks allocated");
             buffer.AppendLine();
@@ -408,7 +413,7 @@ public sealed unsafe class TlsfAllocator
         var index = _indexToFirstAvailableBlock;
         if (index < 0)
         {
-            index = _blocks.Count; // next index
+            index = _blockCount; // next index
         }
         else
         {
@@ -417,6 +422,7 @@ public sealed unsafe class TlsfAllocator
         return index;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void MarkBlockAsAvailable(ref Block block, int blockIndex)
     {
         block = default;
@@ -429,17 +435,37 @@ public sealed unsafe class TlsfAllocator
         block.FreeLink.Next = previousAvailableIndex;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref Block GetBlockAt(int index)
     {
-        Debug.Assert(index >= 0 && index < _blocks.Count);
-        return ref _blocks.UnsafeGetRefAt(index);
+        Debug.Assert(index >= 0 && index < _blockCount);
+
+        var groupIndex = index >> GroupedBlockCountLog2;
+        var blocks = _groupedBlocks.UnsafeGetRefAt(groupIndex);
+        var localIndex = index & GroupedBlockMask;
+        return ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(blocks), localIndex);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref Block GetOrCreateBlockAt(int index)
     {
-        return ref _blocks.UnsafeGetOrCreate(index);
+        var groupIndex = index >> GroupedBlockCountLog2;
+
+        while (groupIndex >= _groupedBlocks.Count)
+        {
+            _groupedBlocks.Add(new Block[GroupedBlockCount]);
+        }
+
+        if (index >= _blockCount)
+        {
+            _blockCount = index + 1;
+        }
+
+        var blocks = _groupedBlocks.UnsafeGetRefAt(groupIndex);
+        var localIndex = index & GroupedBlockMask;
+        return ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(blocks), localIndex);
     }
-    
+
     private void RemoveBlockFromFreeList(ref Block block, int firstLevelIndex, int secondLevelIndex)
     {
         var previousBlockIndex = block.FreeLink.Previous;

@@ -20,11 +20,6 @@ public readonly record struct TlsfAllocatorConfig()
     public uint PreAllocatedChunkCount { get; init; } = 4;
 
     /// <summary>
-    /// Gets or sets the number of blocks that we might allocate.
-    /// </summary>
-    public uint PreAllocatedBlockCount { get; init; } = 16;
-
-    /// <summary>
     /// Gets or sets the number of available blocks that we might allocate.
     /// </summary>
     public uint PreAllocatedAvailableBlockCount { get; init; } = 16;
