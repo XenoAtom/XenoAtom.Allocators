@@ -4,8 +4,6 @@
 
 This library provides fast, lightweight and low-level memory allocators for .NET.
 
-> **Note**: This library is still in early development and is not yet ready for production use.
-
 ## ✨ Features
 
 - Implementation of a [TLSF (Two-Level Segregated Fit) allocator](http://www.gii.upv.es/tlsf/) with the following features
@@ -20,6 +18,30 @@ This library provides fast, lightweight and low-level memory allocators for .NET
 ## 📖 User Guide
 
 For more details on how to use XenoAtom.Allocators, please visit the [user guide](https://github.com/XenoAtom/XenoAtom.Allocators/blob/main/doc/readme.md).
+
+## 📊 Benchmarks
+
+The benchmark is available in the [XenoAtom.Allocators.Bench](src/XenoAtom.Allocators.Bench/Program.cs).
+
+It is comparing the performance of the TLSF allocator against the standard `malloc`/`free` from the C runtime library.
+
+The benchmark consists of making 2048 allocations and frees within a range of random sizes between `64, 96, 150, 200, 400, 1024, 4096` bytes.
+
+```
+BenchmarkDotNet v0.13.12, Windows 11 (10.0.22631.3810/23H2/2023Update/SunValley3)
+AMD Ryzen 9 7950X, 1 CPU, 32 logical and 16 physical cores
+.NET SDK 8.0.300
+  [Host]     : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  DefaultJob : .NET 8.0.6 (8.0.624.26715), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+```
+
+| Method | Mean      | Error    | StdDev   | Ratio | RatioSD |
+|------- |----------:|---------:|---------:|------:|--------:|
+| Tlsf   |  82.27 us | 1.285 us | 1.202 us |  0.78 |    0.02 |
+| Libc   | 105.34 us | 1.898 us | 2.110 us |  1.00 |    0.00 |
+
+The benchmark shows that the **TLSF allocator is 20%+ faster** than the standard `malloc`/`free` from the C runtime library.
+
 
 ## 🪪 License
 
