@@ -85,13 +85,13 @@ public class BenchAllocator
         private readonly Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
         private const int ChunkSize = 65536;
         
-        public MemoryChunk AllocateChunk(MemorySize minSize)
+        public bool TryAllocateChunk(MemorySize minSize, out MemoryChunk chunk)
         {
             var blockSize = (uint)Math.Max(ChunkSize, (int)minSize.Value);
             var address = NativeMemory.AlignedAlloc(blockSize, 64);
-            var chunk = new MemoryChunk((ulong)_chunks.Count, (ulong)address, blockSize);
+            chunk = new MemoryChunk((ulong)_chunks.Count, (ulong)address, blockSize);
             _chunks.Add(_chunks.Count, chunk);
-            return chunk;
+            return true;
         }
 
         public void FreeChunk(in MemoryChunk chunk)

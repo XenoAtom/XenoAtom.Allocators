@@ -538,7 +538,7 @@ public partial class BasicTests
         
         public List<ChunkAllocationRequest> RequestedChunkAllocations { get; }
         
-        public MemoryChunk AllocateChunk(MemorySize size)
+        public bool TryAllocateChunk(MemorySize size, out MemoryChunk chunk)
         {
             while (_nextSize < size)
             {
@@ -550,7 +550,8 @@ public partial class BasicTests
             _baseAddress += _nextSize;
             RequestedChunkAllocations.Add(new((ulong)chunkIndex, baseAddress, size, _nextSize));
 
-            return new((ulong)chunkIndex, baseAddress, _nextSize);
+            chunk = new((ulong)chunkIndex, baseAddress, _nextSize);
+            return true;
         }
 
         public void FreeChunk(in MemoryChunk chunk)

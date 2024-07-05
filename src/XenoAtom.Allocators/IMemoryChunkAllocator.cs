@@ -13,8 +13,9 @@ public interface IMemoryChunkAllocator
     /// Allocates a new chunk of memory.
     /// </summary>
     /// <param name="minSize">The minimum size. Usually the size returned by an allocator can be much bigger.</param>
-    /// <returns>The allocated memory chunk.</returns>
-    MemoryChunk AllocateChunk(MemorySize minSize);
+    /// <param name="chunk">The allocated memory chunk.</param>
+    /// <returns><c>true</c> if the allocation was successful; otherwise <c>false</c>.</returns>
+    bool TryAllocateChunk(MemorySize minSize, out MemoryChunk chunk);
 
     /// <summary>
     /// Frees a chunk of memory.

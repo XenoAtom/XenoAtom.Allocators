@@ -93,14 +93,30 @@ public sealed unsafe class TlsfAllocator
     /// </summary>
     /// <param name="size">The requested size</param>
     /// <returns>An allocation with the requested size rounded up to the alignment of this allocator.</returns>
+    /// <exception cref="OutOfMemoryException">If the allocation failed.</exception>
     public TlsfAllocation Allocate(uint size)
+        => !TryAllocate(new(size), out var allocation) ? throw new OutOfMemoryException($"Failed to allocate a block of size {size}") : allocation;
+
+    /// <summary>
+    /// Tries to allocate a block of memory of the specified size.
+    /// </summary>
+    /// <param name="size">The requested size</param>
+    /// <param name="allocation">An allocation with the requested size rounded up to the alignment of this allocator if the result of this function is <c>true</c>.</param>
+    /// <returns><c>true</c> if the allocation was successful; otherwise <c>false</c>.</returns>
+    public bool TryAllocate(MemorySize size, out TlsfAllocation allocation)
     {
         // We align the size to the alignment (so free blocks are always aligned)
         size = AlignHelper.AlignUp(size, _alignment);
 
         var firstLevelIndex = Mapping(size, out int secondLevelIndex);
 
-        ref var freeBlock = ref FindSuitableBlock(size, ref firstLevelIndex, ref secondLevelIndex, out var freeBlockIndex);
+        // Tries to find a block. The allocation could fail if we don't have a block available and the chunk allocation failed.
+        ref var freeBlock = ref TryFindSuitableBlock(size, ref firstLevelIndex, ref secondLevelIndex, out var freeBlockIndex);
+        if (Unsafe.IsNullRef(ref freeBlock))
+        {
+            allocation = default;
+            return false;
+        }
 
         ref var chunk = ref _chunks.UnsafeGetRefAt((int)freeBlock.ChunkIndex);
         chunk.TotalAllocated += size;
@@ -154,7 +170,7 @@ public sealed unsafe class TlsfAllocator
                 InsertBlockIntoFreeList(ref freeBlock, freeBlockIndex, newFirstLevelIndex, newSecondLevelIndex);
             }
 
-            return new TlsfAllocation(new((uint)usedBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            allocation = new TlsfAllocation(new((uint)usedBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
         else
         {
@@ -167,9 +183,11 @@ public sealed unsafe class TlsfAllocator
             chunk.UsedBlockCount++;
             chunk.FreeBlockCount--;
             Debug.Assert(chunk.FreeBlockCount >= 0);
-            
-            return new TlsfAllocation(new((uint)freeBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+
+            allocation = new TlsfAllocation(new((uint)freeBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
+
+        return true;
     }
 
     /// <summary>
@@ -535,7 +553,7 @@ public sealed unsafe class TlsfAllocator
         firstFreeIndex = blockIndex;
     }
 
-    private ref Block FindSuitableBlock(uint size, ref int firstLevelIndex, ref int secondLevelIndex, out int blockIndex)
+    private ref Block TryFindSuitableBlock(uint size, ref int firstLevelIndex, ref int secondLevelIndex, out int blockIndex)
     {
         findFirstLevel:
         firstLevelIndex = _bins.GetFirstLevelIndexAvailableAt(firstLevelIndex);
@@ -543,6 +561,12 @@ public sealed unsafe class TlsfAllocator
         // If we don't have a block in higher level directory, we need to allocate a new chunk
         if (firstLevelIndex < 0)
         {
+            if (!_context.TryAllocateChunk(new(size), out var localChunk))
+            {
+                blockIndex = -1;
+                return ref Unsafe.NullRef<Block>();
+            }
+
             int chunkIndex = _chunks.Count;
             ref var chunkEntry = ref _chunks.UnsafeGetOrCreate(chunkIndex);
             chunkEntry = default;
@@ -551,8 +575,8 @@ public sealed unsafe class TlsfAllocator
             blockIndex = GetNextAvailableBlockIndex();
             chunkEntry.FreeBlockCount++;
             chunkEntry.FirstBlockInPhysicalOrder = blockIndex;
-
-            chunk = _context.AllocateChunk(new(size)); // We know that size is at minimum _alignment size
+            chunk = localChunk;
+            
             Debug.Assert(BitOperations.IsPow2(chunk.Size));
             ref var block = ref GetOrCreateBlockAt(blockIndex);
             block.ChunkIndex = (uint)chunkIndex;
