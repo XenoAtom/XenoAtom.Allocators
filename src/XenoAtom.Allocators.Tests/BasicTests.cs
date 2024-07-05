@@ -97,6 +97,8 @@ public partial class BasicTests
 
         // Free allocation 1
         tlsf.Free(allocation1);
+        Assert.ThrowsException<ArgumentException>(() => tlsf.Free(allocation1));
+
         Assert.AreEqual(2U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(2U, tlsf.Chunks[0].FreeBlockCount);
 

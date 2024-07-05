@@ -179,8 +179,15 @@ public sealed unsafe class TlsfAllocator
     public void Free(TlsfAllocation allocation)
     {
         int blockIndex = (int)allocation.BlockIndex;
+        if ((uint)blockIndex >= (uint)_blockCount)
+        {
+            throw new ArgumentException($"The block index {blockIndex} is out of range", nameof(allocation));
+        }
         ref var block = ref GetBlockAt(blockIndex);
-        Debug.Assert(block.IsUsed);
+        if (!block.IsUsed)
+        {
+            throw new ArgumentException($"The block at index {blockIndex} is already free", nameof(allocation));
+        }
         block.IsUsed = false;
 
         // Update statistics for the chunk
