@@ -40,7 +40,7 @@ AMD Ryzen 9 7950X, 1 CPU, 32 logical and 16 physical cores
 | Tlsf   |  82.27 us | 1.285 us | 1.202 us |  0.78 |    0.02 |
 | Libc   | 105.34 us | 1.898 us | 2.110 us |  1.00 |    0.00 |
 
-The benchmark shows that the **TLSF allocator is 20%+ faster** than the standard `malloc`/`free` from the C runtime library.
+The benchmark shows that the **TLSF allocator is 20%+ faster** than the standard `malloc`/`free` from the C runtime library (MSVC C Runtime on Windows).
 
 
 ## 🪪 License
