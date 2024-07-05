@@ -275,8 +275,8 @@ public sealed unsafe class TlsfAllocator
         buffer.AppendLine();
         buffer.AppendLine($"Alignment: {_alignment}");
         buffer.AppendLine();
-        buffer.AppendLine("Chunks:");
-        buffer.AppendLine("-------");
+        buffer.AppendLine($"Chunks: {_chunks.Count,2}");
+        buffer.AppendLine("----------");
         for (int i = 0; i < _chunks.Count; i++)
         {
             ref var chunk = ref _chunks[i];
@@ -331,23 +331,48 @@ public sealed unsafe class TlsfAllocator
         }
         buffer.AppendLine();
 
-        buffer.AppendLine("Blocks:");
-        buffer.AppendLine("-------");
+        buffer.AppendLine($"Blocks: {_blocks.Count,3}");
+        buffer.AppendLine("-----------");
         var availableBlocks = new HashSet<int>(_availableBlocks);
 
-        buffer.AppendLine($"{"Block",5} {"Chunk",5} {"Offset",6} {"Size", 6} {"Status", 6} {"Free Links", 14} {"Phys Links", 14}");
+        const int C1 = 6;
+        const int C2 = 5;
+        const int C3 = 6;
+        const int C4 = 6;
+        const int C5 = 6;
+        const int C6 = 14;
+        const int C7 = 14;
 
+        buffer.AppendLine($"{"Block",C1} {"Chunk",C2} {"Offset",C3} {"Size", C4} {"Status", C5} {"Free Links", C6} {"Phys Links", C7}");
+
+        int firstBlockAvailableIndex = -1;
         for (int i = 0; i < _blocks.Count; i++)
         {
             if (availableBlocks.Contains(i))
             {
-                buffer.AppendLine($"{$"[{i}]",5} {$"",5} {"",6} {"",6} {"Avail",6} {"",14} {"",14}");
+                if (firstBlockAvailableIndex < 0)
+                {
+                    firstBlockAvailableIndex = i;
+                }
             }
             else
             {
+                if (firstBlockAvailableIndex >= 0)
+                {
+                    var length = i - firstBlockAvailableIndex;
+                    buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{i-1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
+                    firstBlockAvailableIndex = -1;
+                }
+                
                 ref var block = ref _blocks[i];
-                buffer.AppendLine($"{$"[{i}]",5} {$"{block.ChunkIndex}",5} {block.OffsetIntoChunk,6} {block.Size,6} {(block.IsUsed ? "Used" : "Free"),6} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",14} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",14}");
+                buffer.AppendLine($"{$"[{i}]",C1} {$"{block.ChunkIndex}",C2} {block.OffsetIntoChunk,C3} {block.Size,C4} {(block.IsUsed ? "Used" : "Free"),C5} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",C6} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",C7}");
             }
+        }
+
+        if (firstBlockAvailableIndex >= 0)
+        {
+            var length = _blocks.Count - firstBlockAvailableIndex;
+            buffer.AppendLine($"{$"[{(length == 1 ? firstBlockAvailableIndex : $"{firstBlockAvailableIndex}-{_blocks.Count - 1}")}]",C1} {$"",C2} {"",C3} {"",C4} {"Avail",C5} {"",C6} {"",C7}");
         }
 
         if (_blocks.Count == 0)

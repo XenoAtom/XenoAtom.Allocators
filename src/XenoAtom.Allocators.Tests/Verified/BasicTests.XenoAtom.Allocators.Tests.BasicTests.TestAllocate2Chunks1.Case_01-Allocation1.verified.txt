@@ -3,8 +3,8 @@
 
 Alignment: 64
 
-Chunks:
--------
+Chunks:  1
+----------
 Chunk MemoryChunkId(0x0):
   BaseAddress: MemoryAddress(0xFE00120000000000)
   Size: MemorySize(65536)
@@ -18,8 +18,8 @@ Bins: 0b0000_0000_0000_0000_0000_0000_0010_0000
 Bin L1 (5): [0x4000, 0x7fff[ -> Mask: 0b1000_0000_0000_0000
   Bin L2 (15): [0x7c00, 0x7fff[ -> FirstFreeBlock: 0
 
-Blocks:
--------
-Block Chunk Offset   Size Status     Free Links     Phys Links
-  [0]     0    960  64576   Free     -1 <->  -1      1 <->  -1
-  [1]     0      0    960   Used     -1 <->  -1     -1 <->   0
+Blocks:   2
+-----------
+ Block Chunk Offset   Size Status     Free Links     Phys Links
+   [0]     0    960  64576   Free     -1 <->  -1      1 <->  -1
+   [1]     0      0    960   Used     -1 <->  -1     -1 <->   0
