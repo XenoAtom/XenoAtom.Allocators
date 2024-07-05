@@ -20,19 +20,6 @@ Bin L1 (5): [0x4000, 0x7fff[ -> Mask: 0b0100_0000_0000_0000
 
 Blocks:
 -------
-Block 0:
-  ChunkIndex: 0
-  OffsetIntoChunk: 4096
-  Size: 61440
-  Status: Free
-  -1 <- FreeLink -> -1
-  1 <- PhysicalLink -> -1
-
-Block 1:
-  ChunkIndex: 0
-  OffsetIntoChunk: 0
-  Size: 4096
-  Status: Used
-  -1 <- FreeLink -> -1
-  -1 <- PhysicalLink -> 0
-
+Block Chunk Offset   Size Status     Free Links     Phys Links
+  [0]     0   4096  61440   Free     -1 <->  -1      1 <->  -1
+  [1]     0      0   4096   Used     -1 <->  -1     -1 <->   0

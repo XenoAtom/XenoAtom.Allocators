@@ -334,24 +334,20 @@ public sealed unsafe class TlsfAllocator
         buffer.AppendLine("Blocks:");
         buffer.AppendLine("-------");
         var availableBlocks = new HashSet<int>(_availableBlocks);
+
+        buffer.AppendLine($"{"Block",5} {"Chunk",5} {"Offset",6} {"Size", 6} {"Status", 6} {"Free Links", 14} {"Phys Links", 14}");
+
         for (int i = 0; i < _blocks.Count; i++)
         {
             if (availableBlocks.Contains(i))
             {
-                buffer.AppendLine($"Block {i}: Available");
+                buffer.AppendLine($"{$"[{i}]",5} {$"",5} {"",6} {"",6} {"Avail",6} {"",14} {"",14}");
             }
             else
             {
                 ref var block = ref _blocks[i];
-                buffer.AppendLine($"Block {i}:");
-                buffer.AppendLine($"  ChunkIndex: {block.ChunkIndex}");
-                buffer.AppendLine($"  OffsetIntoChunk: {block.OffsetIntoChunk}");
-                buffer.AppendLine($"  Size: {block.Size}");
-                buffer.AppendLine($"  Status: {(block.IsUsed ? "Used" : "Free")}");
-                buffer.AppendLine($"  {block.FreeLink.Previous} <- FreeLink -> {block.FreeLink.Next}");
-                buffer.AppendLine($"  {block.PhysicalLink.Previous} <- PhysicalLink -> {block.PhysicalLink.Next}");
+                buffer.AppendLine($"{$"[{i}]",5} {$"{block.ChunkIndex}",5} {block.OffsetIntoChunk,6} {block.Size,6} {(block.IsUsed ? "Used" : "Free"),6} {$"{block.FreeLink.Previous,3} <-> {block.FreeLink.Next,3}",14} {$"{block.PhysicalLink.Previous,3} <-> {block.PhysicalLink.Next,3}",14}");
             }
-            buffer.AppendLine();
         }
 
         if (_blocks.Count == 0)

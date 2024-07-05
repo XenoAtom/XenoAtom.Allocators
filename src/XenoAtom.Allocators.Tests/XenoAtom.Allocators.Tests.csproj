@@ -19,4 +19,8 @@
     <ProjectReference Include="..\XenoAtom.Allocators\XenoAtom.Allocators.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Verified\" />
+  </ItemGroup>
+
 </Project>
