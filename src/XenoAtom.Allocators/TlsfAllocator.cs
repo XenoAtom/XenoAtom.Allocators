@@ -442,14 +442,10 @@ public sealed unsafe class TlsfAllocator
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void MarkBlockAsAvailable(ref Block block, int blockIndex)
     {
-        block = default;
         block.IsAvailable = true;
         block.FreeLink = BlockLinks.Undefined;
-        block.PhysicalLink = BlockLinks.Undefined;
-
-        var previousAvailableIndex = _indexToFirstAvailableBlock;
+        block.FreeLink.Next = _indexToFirstAvailableBlock;
         _indexToFirstAvailableBlock = blockIndex;
-        block.FreeLink.Next = previousAvailableIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

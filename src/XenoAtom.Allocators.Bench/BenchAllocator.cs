@@ -10,10 +10,10 @@ namespace XenoAtom.Allocators.Bench;
 
 public class BenchAllocator
 {
-    private static readonly ChunkAllocator _instance = new ChunkAllocator();
+    private static readonly BasicChunkAllocator _instance = new BasicChunkAllocator();
 
     private TlsfAllocator _tlsfAllocator;
-    private UnsafeList<TlsfAllocation> _tlsfLocalList = new();
+    private UnsafeList<TlsfAllocationToken> _tlsfLocalList = new();
     private UnsafeList<nint> _libcLocalList = new();
     private Random _random = new Random();
 
@@ -62,7 +62,7 @@ public class BenchAllocator
         }
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public unsafe void Libc()
     {
         ref var localList = ref _libcLocalList;
@@ -80,22 +80,23 @@ public class BenchAllocator
         }
     }
 
-    private unsafe class ChunkAllocator : IMemoryChunkAllocator
+    private unsafe class BasicChunkAllocator : IMemoryChunkAllocator
     {
-        private Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
+        private readonly Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
         private const int ChunkSize = 65536;
         
         public MemoryChunk AllocateChunk(MemorySize minSize)
         {
-            var address = NativeMemory.Alloc(ChunkSize);
-            var chunk = new MemoryChunk((ulong)_chunks.Count, (ulong)address, ChunkSize);
+            var blockSize = (uint)Math.Max(ChunkSize, (int)minSize.Value);
+            var address = NativeMemory.AlignedAlloc(blockSize, 64);
+            var chunk = new MemoryChunk((ulong)_chunks.Count, (ulong)address, blockSize);
             _chunks.Add(_chunks.Count, chunk);
             return chunk;
         }
 
         public void FreeChunk(in MemoryChunk chunk)
         {
-            NativeMemory.Free((void*)(ulong)chunk.BaseAddress);
+            NativeMemory.AlignedFree((void*)(ulong)chunk.BaseAddress);
             _chunks.Remove((int)chunk.Id.Value);
         }
     }
