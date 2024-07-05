@@ -1,5 +1,14 @@
 # XenoAtom.Allocators User Guide
 
+- [Overview](#overview)
+  - [Creating a TLSF allocator](#creating-a-tlsf-allocator)
+  - [Allocating memory](#allocating-memory)
+  - [Freeing memory](#freeing-memory)
+- [Advanced usage](#advanced-usage)
+  - [Customizing the alignment](#customizing-the-alignment)
+  - [Custom memory chunk allocator](#custom-memory-chunk-allocator)
+  - [Resetting the allocator](#resetting-the-allocator)
+
 ## Overview
 
 The main entry point of the library is the `TlsfAllocator` class. This class provides a TLSF (Two-Level Segregated Fit) allocator implementation. The TLSF allocator is a low-level memory allocator that provides a good balance between speed, fragmentation, and memory overhead. It is particularly well suited for real-time systems.
@@ -47,6 +56,7 @@ var chunkAllocator = new BasicChunkAllocator();
 var allocator = new TlsfAllocator(chunkAllocator, 64);
 ```
 
+[:top:](#xenoatomallocators-user-guide)
 ### Allocating memory
 
 You can allocate memory using the `Allocate` method:
@@ -79,6 +89,7 @@ public readonly record struct TlsfAllocation
 }
 ```
 
+[:top:](#xenoatomallocators-user-guide)
 ### Freeing memory
 
 You can free memory using the `Free` method by passing a `TlsfAllocationToken` stored in the `TlsfAllocation` structure via the `Token` property:
@@ -88,3 +99,34 @@ allocator.Free(allocation.Token);
 // Or you can use the implicit cast operator:
 // allocator.Free(allocation);
 ```
+
+[:top:](#xenoatomallocators-user-guide)
+## Advanced usage
+
+### Customizing the alignment
+
+You can customize the alignment of the allocator by providing a different alignment value when creating the allocator:
+
+```csharp
+var allocator = new TlsfAllocator(chunkAllocator, 128);
+```
+
+[:top:](#xenoatomallocators-user-guide)
+### Custom memory chunk allocator
+
+The chunk allocator can be customized to use different memory sources (e.g., native memory, managed memory, custom memory like GPU, etc.). 
+
+It can also the faked with no allocations (as done in the tests) to simulate the behavior of the allocator without actually allocating memory.
+
+[:top:](#xenoatomallocators-user-guide)
+### Resetting the allocator
+
+You can reset the allocator to its initial state by calling the `Reset` method:
+
+```csharp
+allocator.Reset();
+```
+
+It will free all the memory chunks by calling `IMemoryChunkAllocator.FreeChunk` for each allocated chunk and reset the allocator to its initial state.
+
+[:top:](#xenoatomallocators-user-guide)
