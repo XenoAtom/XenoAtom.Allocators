@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "01-Documentation", "01-Docu
 		..\doc\readme.md = ..\doc\readme.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XenoAtom.Allocators.Bench", "XenoAtom.Allocators.Bench\XenoAtom.Allocators.Bench.csproj", "{02905B30-4E70-4370-B422-EB066E4AA000}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{2FBFC432-1169-49EB-8894-1C58B79903E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2FBFC432-1169-49EB-8894-1C58B79903E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2FBFC432-1169-49EB-8894-1C58B79903E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02905B30-4E70-4370-B422-EB066E4AA000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02905B30-4E70-4370-B422-EB066E4AA000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02905B30-4E70-4370-B422-EB066E4AA000}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02905B30-4E70-4370-B422-EB066E4AA000}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
