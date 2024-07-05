@@ -111,10 +111,10 @@ public sealed unsafe class TlsfAllocator
 
             // Create a new block
             var usedBlockIndex = GetNextAvailableBlockIndex();
-            ref var usedBlock = ref _blocks.UnsafeGetOrCreate(usedBlockIndex);
+            ref var usedBlock = ref GetOrCreateBlockAt(usedBlockIndex);
             chunk.UsedBlockCount++;
             // We need to rebind the free block as we might have allocate a new block with UnsafeGetOrCreate
-            freeBlock = ref _blocks.UnsafeGetRefAt(freeBlockIndex);
+            freeBlock = ref GetBlockAt(freeBlockIndex);
 
             usedBlock.ChunkIndex = freeBlock.ChunkIndex;
             usedBlock.OffsetIntoChunk = offsetIntoChunk;
@@ -133,7 +133,7 @@ public sealed unsafe class TlsfAllocator
             }
             else
             {
-                ref var previousBlock = ref _blocks.UnsafeGetRefAt(freeBlock.PhysicalLink.Previous);
+                ref var previousBlock = ref GetBlockAt(freeBlock.PhysicalLink.Previous);
                 previousBlock.PhysicalLink.Next = usedBlockIndex;
                 Debug.Assert(previousBlock.OffsetIntoChunk + previousBlock.Size == offsetIntoChunk);
             }
@@ -167,38 +167,6 @@ public sealed unsafe class TlsfAllocator
         }
     }
 
-    private int GetNextAvailableBlockIndex()
-    {
-        var index = _indexToFirstAvailableBlock;
-        if (index < 0)
-        {
-            index = _blocks.Count; // next index
-        }
-        else
-        {
-            _indexToFirstAvailableBlock = GetBlockAt(index).FreeLink.Next;
-        }
-        return index;
-    }
-
-    private void MarkBlockAsAvailable(ref Block block, int blockIndex)
-    {
-        block = default;
-        block.IsAvailable = true;
-        block.FreeLink = BlockLinks.Undefined;
-        block.PhysicalLink = BlockLinks.Undefined;
-
-        var previousAvailableIndex = _indexToFirstAvailableBlock;
-        _indexToFirstAvailableBlock = blockIndex;
-        block.FreeLink.Next = previousAvailableIndex;
-    }
-
-    private ref Block GetBlockAt(int index)
-    {
-        Debug.Assert(index >= 0 && index < _blocks.Count);
-        return ref _blocks.UnsafeGetRefAt(index);
-    }
-    
     /// <summary>
     /// Frees an allocation.
     /// </summary>
@@ -206,7 +174,7 @@ public sealed unsafe class TlsfAllocator
     public void Free(TlsfAllocation allocation)
     {
         int blockIndex = (int)allocation.BlockIndex;
-        ref var block = ref _blocks.UnsafeGetRefAt(blockIndex);
+        ref var block = ref GetBlockAt(blockIndex);
         Debug.Assert(block.IsUsed);
         block.IsUsed = false;
 
@@ -221,7 +189,7 @@ public sealed unsafe class TlsfAllocator
         var previousBlockIndex = block.PhysicalLink.Previous;
         if (previousBlockIndex >= 0)
         {
-            ref var previousBlock = ref _blocks.UnsafeGetRefAt(previousBlockIndex);
+            ref var previousBlock = ref GetBlockAt(previousBlockIndex);
             if (!previousBlock.IsUsed)
             {
                 RemoveBlockFromFreeList(ref previousBlock, Mapping(previousBlock.Size, out var previousSecondLevelIndex), previousSecondLevelIndex);
@@ -240,8 +208,8 @@ public sealed unsafe class TlsfAllocator
                 else
                 {
                     // Link the 2 x previous block to the new block
-                    _blocks.UnsafeGetRefAt(previousPreviousBlockIndex).PhysicalLink.Next = blockIndex;
-                    Debug.Assert(_blocks.UnsafeGetRefAt(previousPreviousBlockIndex).IsUsed);
+                    GetBlockAt(previousPreviousBlockIndex).PhysicalLink.Next = blockIndex;
+                    Debug.Assert(GetBlockAt(previousPreviousBlockIndex).IsUsed);
                 }
 
                 chunk.FreeBlockCount--;
@@ -254,7 +222,7 @@ public sealed unsafe class TlsfAllocator
         var nextBlockIndex = block.PhysicalLink.Next;
         if (nextBlockIndex >= 0)
         {
-            ref var nextBlock = ref _blocks.UnsafeGetRefAt(nextBlockIndex);
+            ref var nextBlock = ref GetBlockAt(nextBlockIndex);
             if (!nextBlock.IsUsed)
             {
                 RemoveBlockFromFreeList(ref nextBlock, Mapping(nextBlock.Size, out var nextSecondLevelIndex), nextSecondLevelIndex);
@@ -265,8 +233,8 @@ public sealed unsafe class TlsfAllocator
                 if (nextNextBlockIndex >= 0)
                 {
                     // Link the block to the 2 x next block
-                    _blocks.UnsafeGetRefAt(nextNextBlockIndex).PhysicalLink.Previous = blockIndex;
-                    Debug.Assert(_blocks.UnsafeGetRefAt(nextNextBlockIndex).IsUsed);
+                    GetBlockAt(nextNextBlockIndex).PhysicalLink.Previous = blockIndex;
+                    Debug.Assert(GetBlockAt(nextNextBlockIndex).IsUsed);
                 }
 
                 chunk.FreeBlockCount--;
@@ -435,6 +403,43 @@ public sealed unsafe class TlsfAllocator
         }
     }
 
+    private int GetNextAvailableBlockIndex()
+    {
+        var index = _indexToFirstAvailableBlock;
+        if (index < 0)
+        {
+            index = _blocks.Count; // next index
+        }
+        else
+        {
+            _indexToFirstAvailableBlock = GetBlockAt(index).FreeLink.Next;
+        }
+        return index;
+    }
+
+    private void MarkBlockAsAvailable(ref Block block, int blockIndex)
+    {
+        block = default;
+        block.IsAvailable = true;
+        block.FreeLink = BlockLinks.Undefined;
+        block.PhysicalLink = BlockLinks.Undefined;
+
+        var previousAvailableIndex = _indexToFirstAvailableBlock;
+        _indexToFirstAvailableBlock = blockIndex;
+        block.FreeLink.Next = previousAvailableIndex;
+    }
+
+    private ref Block GetBlockAt(int index)
+    {
+        Debug.Assert(index >= 0 && index < _blocks.Count);
+        return ref _blocks.UnsafeGetRefAt(index);
+    }
+
+    private ref Block GetOrCreateBlockAt(int index)
+    {
+        return ref _blocks.UnsafeGetOrCreate(index);
+    }
+    
     private void RemoveBlockFromFreeList(ref Block block, int firstLevelIndex, int secondLevelIndex)
     {
         var previousBlockIndex = block.FreeLink.Previous;
@@ -448,14 +453,14 @@ public sealed unsafe class TlsfAllocator
         else
         {
             // Otherwise, we need to update the previous block next link to the next block
-            ref var previousBlock = ref _blocks.UnsafeGetRefAt(previousBlockIndex);
+            ref var previousBlock = ref GetBlockAt(previousBlockIndex);
             previousBlock.FreeLink.Next = nextBlockIndex;
         }
 
         if (nextBlockIndex >= 0)
         {
             // If this block is not the last block in the free list, we need to update the next block previous link to the previous block
-            ref var nextBlock = ref _blocks.UnsafeGetRefAt(nextBlockIndex);
+            ref var nextBlock = ref GetBlockAt(nextBlockIndex);
             nextBlock.FreeLink.Previous = previousBlockIndex;
         }
         else
@@ -482,7 +487,7 @@ public sealed unsafe class TlsfAllocator
         }
         else
         {
-            ref var previousBlock = ref _blocks.UnsafeGetRefAt(firstFreeIndex);
+            ref var previousBlock = ref GetBlockAt(firstFreeIndex);
             block.FreeLink.Previous = -1;
             block.FreeLink.Next = firstFreeIndex;
             Debug.Assert(previousBlock.FreeLink.Previous < 0);
@@ -510,7 +515,7 @@ public sealed unsafe class TlsfAllocator
 
             chunk = _context.AllocateChunk(new(size)); // We know that size is at minimum _alignment size
             Debug.Assert(BitOperations.IsPow2(chunk.Size));
-            ref var block = ref _blocks.UnsafeGetOrCreate(blockIndex);
+            ref var block = ref GetOrCreateBlockAt(blockIndex);
             block.ChunkIndex = (uint)chunkIndex;
             // We align the offset to the alignment (so free blocks are always aligned)
             block.OffsetIntoChunk = AlignHelper.AlignUpOffset(chunk.BaseAddress, _alignment);
@@ -548,7 +553,7 @@ public sealed unsafe class TlsfAllocator
             secondLevelIndex = localSecondLevelIndex;
 
             blockIndex = _bins.GetFirstFreeBlockIndexRefAt(localFirstLevelIndex, localSecondLevelIndex);
-            ref var block = ref _blocks.UnsafeGetRefAt(blockIndex);
+            ref var block = ref GetBlockAt(blockIndex);
 
             // This case can happen if we have a block that is too small for the requested size
             // it still appears in the free list but the granularity of the 2nd level doesn't guarantee that the block is big enough
