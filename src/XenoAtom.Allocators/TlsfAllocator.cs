@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -100,18 +101,20 @@ public sealed unsafe class TlsfAllocator
         chunk.TotalAllocated += size;
 
         var offsetIntoChunk = freeBlock.OffsetIntoChunk;
-        var newBlockSize = freeBlock.Size - size;
+        var newFreeBlockSize = freeBlock.Size - size;
         
-        if (newBlockSize > 0)
+        if (newFreeBlockSize > 0)
         {
             // we need to shrink the block and create a new block used
-            freeBlock.OffsetIntoChunk += size;
-            freeBlock.Size = newBlockSize;
+            freeBlock.OffsetIntoChunk = offsetIntoChunk + size;
+            freeBlock.Size = newFreeBlockSize;
 
             // Create a new block
             var usedBlockIndex = _availableBlocks.Count > 0 ? _availableBlocks.Pop() : _blocks.Count;
             ref var usedBlock = ref _blocks.UnsafeGetOrCreate(usedBlockIndex);
             chunk.UsedBlockCount++;
+            // We need to rebind the free block as we might have allocate a new block with UnsafeGetOrCreate
+            freeBlock = ref _blocks.UnsafeGetRefAt(freeBlockIndex);
 
             usedBlock.ChunkIndex = freeBlock.ChunkIndex;
             usedBlock.OffsetIntoChunk = offsetIntoChunk;
@@ -122,8 +125,7 @@ public sealed unsafe class TlsfAllocator
             // Insert the new block in the physical order
             usedBlock.PhysicalLink.Next = freeBlockIndex;
             usedBlock.PhysicalLink.Previous = freeBlock.PhysicalLink.Previous;
-
-
+            
             if (freeBlock.PhysicalLink.Previous < 0)
             {
                 // Relink the beginning of the chunk
@@ -133,8 +135,10 @@ public sealed unsafe class TlsfAllocator
             {
                 ref var previousBlock = ref _blocks.UnsafeGetRefAt(freeBlock.PhysicalLink.Previous);
                 previousBlock.PhysicalLink.Next = usedBlockIndex;
+                Debug.Assert(previousBlock.OffsetIntoChunk + previousBlock.Size == offsetIntoChunk);
             }
 
+            Debug.Assert(usedBlock.OffsetIntoChunk + size == freeBlock.OffsetIntoChunk);
             freeBlock.PhysicalLink.Previous = usedBlockIndex;
 
             // Move the free block to the new free-list location if necessary
@@ -157,6 +161,7 @@ public sealed unsafe class TlsfAllocator
 
             chunk.UsedBlockCount++;
             chunk.FreeBlockCount--;
+            Debug.Assert(chunk.FreeBlockCount >= 0);
             
             return new TlsfAllocation((uint)freeBlockIndex, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
@@ -178,6 +183,7 @@ public sealed unsafe class TlsfAllocator
         chunk.TotalAllocated -= block.Size;
         chunk.UsedBlockCount--;
         chunk.FreeBlockCount++;
+        Debug.Assert(chunk.UsedBlockCount >= 0);
 
         // Merge the block with the previous block if possible
         var previousBlockIndex = block.PhysicalLink.Previous;
@@ -207,6 +213,7 @@ public sealed unsafe class TlsfAllocator
                 }
 
                 chunk.FreeBlockCount--;
+                Debug.Assert(chunk.FreeBlockCount >= 0);
                 _availableBlocks.Add(previousBlockIndex);
             }
         }
@@ -231,6 +238,7 @@ public sealed unsafe class TlsfAllocator
                 }
 
                 chunk.FreeBlockCount--;
+                Debug.Assert(chunk.FreeBlockCount >= 0);
                 _availableBlocks.Add(nextBlockIndex);
             }
         }
@@ -370,8 +378,8 @@ public sealed unsafe class TlsfAllocator
 
     private void RemoveBlockFromFreeList(ref Block block, int firstLevelIndex, int secondLevelIndex)
     {
-        ref var previousBlockIndex = ref block.FreeLink.Previous;
-        ref var nextBlockIndex = ref block.FreeLink.Next;
+        var previousBlockIndex = block.FreeLink.Previous;
+        var nextBlockIndex = block.FreeLink.Next;
 
         if (previousBlockIndex < 0)
         {
@@ -394,7 +402,7 @@ public sealed unsafe class TlsfAllocator
         else
         {
             // Clear bitmap if necessary
-            if (previousBlockIndex < 0 && nextBlockIndex < 0 && _bins.ClearSecondLevelBit(firstLevelIndex, secondLevelIndex))
+            if (previousBlockIndex < 0 && _bins.ClearSecondLevelBit(firstLevelIndex, secondLevelIndex))
             {
                 // If a second level is empty, we need to clear the first level bit
                 _bins.ClearFirstLevelBit(firstLevelIndex);
@@ -407,20 +415,21 @@ public sealed unsafe class TlsfAllocator
         _bins.SetFirstLevelBit(firstLevelIndex);
         _bins.SetSecondLevelBit(firstLevelIndex, secondLevelIndex);
 
-        ref var refPreviousIndex = ref _bins.GetFirstFreeBlockIndexRefAt(firstLevelIndex, secondLevelIndex);
+        ref var firstFreeIndex = ref _bins.GetFirstFreeBlockIndexRefAt(firstLevelIndex, secondLevelIndex);
 
-        if (refPreviousIndex < 0)
+        if (firstFreeIndex < 0)
         {
-            refPreviousIndex = blockIndex;
             block.FreeLink = BlockLinks.Undefined;
         }
         else
         {
-            ref var previousBlock = ref _blocks.UnsafeGetRefAt(refPreviousIndex);
+            ref var previousBlock = ref _blocks.UnsafeGetRefAt(firstFreeIndex);
             block.FreeLink.Previous = -1;
-            block.FreeLink.Next = refPreviousIndex;
+            block.FreeLink.Next = firstFreeIndex;
+            Debug.Assert(previousBlock.FreeLink.Previous < 0);
             previousBlock.FreeLink.Previous = blockIndex;
         }
+        firstFreeIndex = blockIndex;
     }
 
     private ref Block FindSuitableBlock(uint size, ref int firstLevelIndex, ref int secondLevelIndex, out int blockIndex)
@@ -433,6 +442,7 @@ public sealed unsafe class TlsfAllocator
         {
             int chunkIndex = _chunks.Count;
             ref var chunkEntry = ref _chunks.UnsafeGetOrCreate(chunkIndex);
+            chunkEntry = default;
 
             ref var chunk = ref chunkEntry.Info;
             blockIndex = _availableBlocks.Count > 0 ? _availableBlocks.Pop() : _blocks.Count;
@@ -445,18 +455,15 @@ public sealed unsafe class TlsfAllocator
             block.ChunkIndex = (uint)chunkIndex;
             // We align the offset to the alignment (so free blocks are always aligned)
             block.OffsetIntoChunk = AlignHelper.AlignUpOffset(chunk.BaseAddress, _alignment);
-            block.Size = chunk.Size;
+            block.Size = chunk.Size - block.OffsetIntoChunk;
             block.IsUsed = false;
             block.FreeLink = BlockLinks.Undefined;
             block.PhysicalLink = BlockLinks.Undefined;
-            
+
             // Update the first level directory
             var firstLevelIndexChunk = Mapping(chunk.Size, out var localSecondLevelIndex);
-            _bins.SetFirstLevelBit(firstLevelIndexChunk);
-            _bins.SetSecondLevelBit(firstLevelIndexChunk, localSecondLevelIndex);
-
             // Update the second level directory
-            _bins.GetFirstFreeBlockIndexRefAt(firstLevelIndexChunk, localSecondLevelIndex) = blockIndex;
+            InsertBlockIntoFreeList(ref block, blockIndex, firstLevelIndexChunk, localSecondLevelIndex);
 
             firstLevelIndex = firstLevelIndexChunk;
             secondLevelIndex = localSecondLevelIndex;
@@ -597,6 +604,7 @@ public sealed unsafe class TlsfAllocator
     /// <remarks>
     /// This structure is 32 bytes (6 x sizeof(uint))
     /// </remarks>
+    [DebuggerDisplay("{ToDebuggerDisplay(),nq}")]
     private struct Block
     {
         /// <summary>
@@ -625,6 +633,12 @@ public sealed unsafe class TlsfAllocator
         /// Previous and next link for the physical order of the blocks in the chunk, the first block being referenced by <see cref="Chunk.FirstBlockInPhysicalOrder"/>.
         /// </summary>
         public BlockLinks PhysicalLink;
+
+        [ExcludeFromCodeCoverage]
+        private string ToDebuggerDisplay()
+        {
+            return $"Offset: {OffsetIntoChunk}, Size: {Size}, End: {OffsetIntoChunk + Size}, IsUsed: {IsUsed}, FreeLink: {FreeLink.Previous}<->{FreeLink.Next},  PhysicalLink: {PhysicalLink.Previous} <-> {PhysicalLink.Next}";
+        }
         
         public bool IsUsed
         {
@@ -655,9 +669,9 @@ public sealed unsafe class TlsfAllocator
 
         public MemorySize TotalAllocated;
 
-        public uint UsedBlockCount;
+        public int UsedBlockCount;
 
-        public uint FreeBlockCount;
+        public int FreeBlockCount;
 
         internal int FirstBlockInPhysicalOrder;
     }

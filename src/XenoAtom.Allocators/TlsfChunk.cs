@@ -27,10 +27,10 @@ public readonly struct TlsfChunk
     /// <summary>
     /// Gets the number of blocks used.
     /// </summary>
-    public uint UsedBlockCount => _chunk.UsedBlockCount;
+    public uint UsedBlockCount => (uint)_chunk.UsedBlockCount;
 
     /// <summary>
     /// Gets the number of free blocks.
     /// </summary>
-    public uint FreeBlockCount => _chunk.FreeBlockCount;
+    public uint FreeBlockCount => (uint)_chunk.FreeBlockCount;
 }
