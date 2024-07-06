@@ -21,5 +21,5 @@ public interface IMemoryChunkAllocator
     /// Frees a chunk of memory.
     /// </summary>
     /// <param name="chunk">The original chunk that was allocated.</param>
-    void FreeChunk(in MemoryChunk chunk);
+    void FreeChunk(MemoryChunkId chunk);
 }

@@ -554,11 +554,11 @@ public partial class BasicTests
             return true;
         }
 
-        public void FreeChunk(in MemoryChunk chunk)
+        public void FreeChunk(MemoryChunkId chunkId)
         {
             for (var i = 0; i < RequestedChunkAllocations.Count; i++)
             {
-                if (RequestedChunkAllocations[i].Id == chunk.Id)
+                if (RequestedChunkAllocations[i].Id == chunkId)
                 {
                     RequestedChunkAllocations.RemoveAt(i);
                     return;

@@ -157,7 +157,7 @@ public sealed unsafe class TlsfAllocator
                 ref var previousBlock = ref GetBlockAt(freeBlock.PhysicalLink.Previous);
                 previousBlock.PhysicalLink.Next = usedBlockIndex;
                 Debug.Assert(previousBlock.OffsetIntoChunk + previousBlock.Size == offsetIntoChunk);
-            }
+            } 
 
             Debug.Assert(usedBlock.OffsetIntoChunk + size == freeBlock.OffsetIntoChunk);
             freeBlock.PhysicalLink.Previous = usedBlockIndex;
@@ -170,7 +170,7 @@ public sealed unsafe class TlsfAllocator
                 InsertBlockIntoFreeList(ref freeBlock, freeBlockIndex, newFirstLevelIndex, newSecondLevelIndex);
             }
 
-            allocation = new TlsfAllocation(new((uint)usedBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            allocation = new TlsfAllocation(new((uint)usedBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
         else
         {
@@ -184,7 +184,7 @@ public sealed unsafe class TlsfAllocator
             chunk.FreeBlockCount--;
             Debug.Assert(chunk.FreeBlockCount >= 0);
 
-            allocation = new TlsfAllocation(new((uint)freeBlockIndex), (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            allocation = new TlsfAllocation(new((uint)freeBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
 
         return true;
@@ -285,7 +285,7 @@ public sealed unsafe class TlsfAllocator
     {
         for (int i = 0; i < _chunks.Count; i++)
         {
-            _context.FreeChunk(_chunks[i].Info);
+            _context.FreeChunk(_chunks[i].Info.Id);
         }
         _chunks.Clear();
         _blockCount = 0;

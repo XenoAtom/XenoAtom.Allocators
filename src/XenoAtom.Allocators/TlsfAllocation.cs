@@ -9,9 +9,10 @@ namespace XenoAtom.Allocators;
 /// </summary>
 public readonly record struct TlsfAllocation
 {
-    internal TlsfAllocation(TlsfAllocationToken token, MemoryAddress address, MemorySize size)
+    internal TlsfAllocation(TlsfAllocationToken token, MemoryChunkId chunkId, MemoryAddress address, MemorySize size)
     {
         Token = token;
+        ChunkId = chunkId;
         Address = address;
         Size = size;
     }
@@ -21,6 +22,11 @@ public readonly record struct TlsfAllocation
     /// </summary>
     public readonly TlsfAllocationToken Token;
 
+    /// <summary>
+    /// Gets the chunk id of this allocated block belongs to.
+    /// </summary>
+    public readonly MemoryChunkId ChunkId;
+    
     /// <summary>
     /// Gets the address of the allocated block.
     /// </summary>

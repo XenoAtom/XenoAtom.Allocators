@@ -94,10 +94,11 @@ public class BenchAllocator
             return true;
         }
 
-        public void FreeChunk(in MemoryChunk chunk)
+        public void FreeChunk(MemoryChunkId chunkId)
         {
+            var chunk = _chunks[(int)chunkId.Value];
             NativeMemory.AlignedFree((void*)(ulong)chunk.BaseAddress);
-            _chunks.Remove((int)chunk.Id.Value);
+            _chunks.Remove((int)chunkId.Value);
         }
     }
 }

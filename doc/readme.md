@@ -40,10 +40,12 @@ public unsafe class BasicChunkAllocator : IMemoryChunkAllocator
         return true;
     }
 
-    public void FreeChunk(in MemoryChunk chunk)
+    public void FreeChunk(MemoryChunkId chunkId)
     {
+        var index = (int)chunkId.Value;
+        var chunk = _chunks[index];
         NativeMemory.AlignedFree((void*)(ulong)chunk.BaseAddress);
-        _chunks.Remove((int)chunk.Id.Value);
+        _chunks.Remove(index);
     }
 }
 ```
