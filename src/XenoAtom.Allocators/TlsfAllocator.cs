@@ -84,6 +84,11 @@ public sealed unsafe class TlsfAllocator
     }
 
     /// <summary>
+    /// Gets the associated chunk allocator.
+    /// </summary>
+    public IMemoryChunkAllocator ChunkAllocator => _context;
+
+    /// <summary>
     /// Gets a read-only span of the chunks allocated by this allocator.
     /// </summary>
     public ReadOnlySpan<TlsfChunk> Chunks => MemoryMarshal.Cast<Chunk, TlsfChunk>(_chunks.AsSpan());
