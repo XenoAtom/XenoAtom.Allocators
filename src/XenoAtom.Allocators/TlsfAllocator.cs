@@ -170,7 +170,7 @@ public sealed unsafe class TlsfAllocator
                 InsertBlockIntoFreeList(ref freeBlock, freeBlockIndex, newFirstLevelIndex, newSecondLevelIndex);
             }
 
-            allocation = new TlsfAllocation(new((uint)usedBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            allocation = new TlsfAllocation(new(usedBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
         else
         {
@@ -184,7 +184,7 @@ public sealed unsafe class TlsfAllocator
             chunk.FreeBlockCount--;
             Debug.Assert(chunk.FreeBlockCount >= 0);
 
-            allocation = new TlsfAllocation(new((uint)freeBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
+            allocation = new TlsfAllocation(new(freeBlockIndex), chunk.Info.Id, (ulong)chunk.Info.BaseAddress + offsetIntoChunk, size);
         }
 
         return true;

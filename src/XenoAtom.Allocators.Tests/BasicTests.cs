@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace XenoAtom.Allocators.Tests;
@@ -10,7 +11,22 @@ public partial class BasicTests
     public static MemoryAddress BaseAddress => 0xFE00_1200_0000_0000;
 
     public static MemorySize BaseChunkSize => 65536;
+    
+    [TestMethod]
+    public void TestToken()
+    {
+        var token = new TlsfAllocationToken();
+        Assert.IsFalse(token.IsValid);
 
+        token = new TlsfAllocationToken(0);
+        Assert.IsTrue(token.IsValid);
+        Assert.AreEqual(0, token.BlockIndex);
+
+        token = new TlsfAllocationToken(1);
+        Assert.IsTrue(token.IsValid);
+        Assert.AreEqual(1, token.BlockIndex);
+    }
+    
     [TestMethod]
     public async Task TestAllocate1()
     {
