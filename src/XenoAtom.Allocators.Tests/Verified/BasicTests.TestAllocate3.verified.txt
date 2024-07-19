@@ -1,0 +1,59 @@
+﻿{
+  01-Allocations:
+    TLSF Allocator
+    ==============
+    
+    Alignment: 1024
+    
+    Chunks:  1
+    ----------
+    Chunk MemoryChunkId(0x0):
+      BaseAddress: MemoryAddress(0xFE00120000000000)
+      Size: MemorySize(65536)
+      TotalAllocated: MemorySize(4096)
+      UsedBlockCount: 3
+      FreeBlockCount: 1
+      FirstBlockInPhysicalOrder: 1
+    
+    Bins: 0b0000_0000_0000_0000_0000_0000_0010_0000
+    ----------------------------------------
+    Bin L1 (5): [0x4000, 0x7fff[ -> Mask: 0b0100_0000_0000_0000
+      Bin L2 (14): [0x7800, 0x7bff[ -> FirstFreeBlock: 0
+    
+    Blocks:   4
+    -----------
+     Block Chunk Offset   Size Status     Free Links     Phys Links
+       [0]     0   4096  61440   Free     -1 <->  -1      3 <->  -1
+       [1]     0      0   1024   Used     -1 <->  -1     -1 <->   2
+       [2]     0   1024   1024   Used     -1 <->  -1      1 <->   3
+       [3]     0   2048   2048   Used     -1 <->  -1      2 <->   0
+    ,
+  02-Free Allocations:
+    TLSF Allocator
+    ==============
+    
+    Alignment: 1024
+    
+    Chunks:  1
+    ----------
+    Chunk MemoryChunkId(0x0):
+      BaseAddress: MemoryAddress(0xFE00120000000000)
+      Size: MemorySize(65536)
+      TotalAllocated: MemorySize(0)
+      UsedBlockCount: 0
+      FreeBlockCount: 1
+      FirstBlockInPhysicalOrder: 2
+    
+    Bins: 0b0000_0000_0000_0000_0000_0000_0100_0000
+    ----------------------------------------
+    Bin L1 (6): [0x8000, 0xffff[ -> Mask: 0b0000_0000_0000_0001
+      Bin L2 (0): [0x8000, 0x87ff[ -> FirstFreeBlock: 2
+    
+    Blocks:   4
+    -----------
+     Block Chunk Offset   Size Status     Free Links     Phys Links
+     [0-1]                      Avail                              
+       [2]     0      0  65536   Free     -1 <->  -1     -1 <->  -1
+       [3]                      Avail                              
+    
+}

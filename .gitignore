@@ -370,3 +370,6 @@ tmp/
 
 # Remove artifacts produced by dotnet-releaser
 artifacts-dotnet-releaser/
+
+# Verify
+*.received.*

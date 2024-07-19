@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace XenoAtom.Allocators.Tests;
@@ -11,7 +9,7 @@ public partial class BasicTests
     public static MemoryAddress BaseAddress => 0xFE00_1200_0000_0000;
 
     public static MemorySize BaseChunkSize => 65536;
-    
+
     [TestMethod]
     public void TestToken()
     {
@@ -26,17 +24,19 @@ public partial class BasicTests
         Assert.IsTrue(token.IsValid);
         Assert.AreEqual(1, token.BlockIndex);
     }
-    
+
     [TestMethod]
     public async Task TestAllocate1()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
         var tlsf = new TlsfAllocator(allocator, alignment);
 
         Assert.AreEqual(0, tlsf.Chunks.Length);
-        
+
         var allocation = tlsf.Allocate(512);
 
         // General checks
@@ -53,13 +53,13 @@ public partial class BasicTests
         Assert.AreEqual((MemorySize)512, allocation.Size);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocate1");
+        AddRecording(tlsf, "01-Allocate1");
 
         // Free Allocation 1
         tlsf.Free(allocation);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "02-Free Allocate1");
+        AddRecording(tlsf, "02-Free Allocate1");
 
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
@@ -69,12 +69,16 @@ public partial class BasicTests
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
 
-        await VerifyStep(tlsf, "03-Reset");
+        AddRecording(tlsf, "03-Reset");
+
+        await Verify();
     }
 
     [TestMethod]
     public async Task TestAllocate3()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 1024;
@@ -109,7 +113,7 @@ public partial class BasicTests
         Assert.AreEqual(alignment * 2, allocation3.Size);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocations");
+        AddRecording(tlsf, "01-Allocations");
 
         // Free allocation 1
         tlsf.Free(allocation1);
@@ -128,17 +132,20 @@ public partial class BasicTests
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
 
-        await VerifyStep(tlsf, "02-Free Allocations");
-        
+        AddRecording(tlsf, "02-Free Allocations");
+
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+        await Verify();
     }
-    
+
     [TestMethod]
     public async Task TestAllocateInterleavedFree()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         var tlsf = new TlsfAllocator(allocator, 64);
@@ -151,31 +158,35 @@ public partial class BasicTests
         var allocation4 = tlsf.Allocate(64);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocations");
+        AddRecording(tlsf, "01-Allocations");
 
         // Free allocation 2
         // Free allocation 4
         tlsf.Free(allocation2);
         tlsf.Free(allocation4);
 
-        await VerifyStep(tlsf, "02-Free24");
+        AddRecording(tlsf, "02-Free24");
 
         // Free allocation 2
         // Free allocation 4
         tlsf.Free(allocation1);
         tlsf.Free(allocation3);
 
-        await VerifyStep(tlsf, "03-Free13");
+        AddRecording(tlsf, "03-Free13");
 
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
     [TestMethod]
     public async Task TestAllocateInterleavedFree2()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         var tlsf = new TlsfAllocator(allocator, 64);
@@ -187,34 +198,37 @@ public partial class BasicTests
         var allocation3 = tlsf.Allocate(64);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocations");
+        AddRecording(tlsf, "01-Allocations");
 
         // Free allocation 2
         tlsf.Free(allocation2);
 
-        await VerifyStep(tlsf, "02-Free2");
+        AddRecording(tlsf, "02-Free2");
 
         // Free allocation 3
         tlsf.Free(allocation3);
 
-        await VerifyStep(tlsf, "03-Free3");
+        AddRecording(tlsf, "03-Free3");
 
         // Free allocation 1
         tlsf.Free(allocation1);
 
-        await VerifyStep(tlsf, "04-Free1");
-
+        AddRecording(tlsf, "04-Free1");
 
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
 
     [TestMethod]
     public async Task TestAllocateInterleavedFreeAndRealloc()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         var tlsf = new TlsfAllocator(allocator, 64);
@@ -226,34 +240,38 @@ public partial class BasicTests
         var allocation3 = tlsf.Allocate(64);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocations");
+        AddRecording(tlsf, "01-Allocations");
 
         // Free allocation 2
         tlsf.Free(allocation2);
 
-        await VerifyStep(tlsf, "02-Free2");
+        AddRecording(tlsf, "02-Free2");
 
         // Allocation 2
         allocation2 = tlsf.Allocate(64);
 
-        await VerifyStep(tlsf, "03-Allocate2");
+        AddRecording(tlsf, "03-Allocate2");
 
         // Free allocation 1
         tlsf.Free(allocation3);
         tlsf.Free(allocation2);
         tlsf.Free(allocation1);
 
-        await VerifyStep(tlsf, "04-Free321");
-        
+        AddRecording(tlsf, "04-Free321");
+
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
     [TestMethod]
     public async Task TestAllocateBiggerThanChunk()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
@@ -276,25 +294,29 @@ public partial class BasicTests
         Assert.AreEqual(BaseAddress, allocation.Address);
         Assert.AreEqual((MemorySize)(BaseChunkSize + alignment), allocation.Size);
 
-        await VerifyStep(tlsf, "01-Allocation");
-        
+        AddRecording(tlsf, "01-Allocation");
+
         // Free Allocation 1
         tlsf.Free(allocation);
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
 
-        await VerifyStep(tlsf, "02-Free Allocation");
+        AddRecording(tlsf, "02-Free Allocation");
 
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
 
     [TestMethod]
     public async Task TestAllocate2Chunks()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
@@ -305,14 +327,14 @@ public partial class BasicTests
         var allocation1 = tlsf.Allocate(4096);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocation1");
+        AddRecording(tlsf, "01-Allocation1");
 
         // We want to force the allocation of a new chunk, despite the fact that we have a first level bin that will report it free
         // but not the second level that won't be enough big to accomodate the requested size
         var allocation2 = tlsf.Allocate(BaseChunkSize - 65);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "02-Allocation2");
+        AddRecording(tlsf, "02-Allocation2");
 
         // General checks
         Assert.AreEqual(2, allocator.RequestedChunkAllocations.Count);
@@ -341,14 +363,14 @@ public partial class BasicTests
         tlsf.Free(allocation1);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "03-Free Allocation1");
+        AddRecording(tlsf, "03-Free Allocation1");
 
         // Free Allocation 2
         tlsf.Free(allocation2);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "04-Free Allocation2");
-        
+        AddRecording(tlsf, "04-Free Allocation2");
+
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
         Assert.AreEqual(0U, tlsf.Chunks[1].UsedBlockCount);
@@ -358,11 +380,15 @@ public partial class BasicTests
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
     [TestMethod]
     public async Task TestAllocate2Chunks1()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
@@ -370,17 +396,17 @@ public partial class BasicTests
 
         Assert.AreEqual(0, tlsf.Chunks.Length);
 
-        var allocation1 = tlsf.Allocate(960); // Allocate 
+        var allocation1 = tlsf.Allocate(960); // Allocate
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "01-Allocation1");
+        AddRecording(tlsf, "01-Allocation1");
 
         // We want to force the allocation of a new chunk, despite the fact that we have a first level bin that will report it free
         // but not the second level that won't be enough big to accomodate the requested size
         var allocation2 = tlsf.Allocate(BaseChunkSize - 65);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "02-Allocation2");
+        AddRecording(tlsf, "02-Allocation2");
 
         // General checks
         Assert.AreEqual(2, allocator.RequestedChunkAllocations.Count);
@@ -409,13 +435,13 @@ public partial class BasicTests
         tlsf.Free(allocation1);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "03-Free Allocation1");
+        AddRecording(tlsf, "03-Free Allocation1");
 
         // Free Allocation 2
         tlsf.Free(allocation2);
 
         // Dump intermediate result
-        await VerifyStep(tlsf, "04-Free Allocation2");
+        AddRecording(tlsf, "04-Free Allocation2");
 
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
@@ -426,11 +452,15 @@ public partial class BasicTests
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
-    
+
     [TestMethod]
     public async Task TestAllocateExactlyOneChunk()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
@@ -440,7 +470,7 @@ public partial class BasicTests
 
         var allocation = tlsf.Allocate(BaseChunkSize);
 
-        await VerifyStep(tlsf, "01-Allocation");
+        AddRecording(tlsf, "01-Allocation");
 
         // General checks
         Assert.AreEqual(1, allocator.RequestedChunkAllocations.Count);
@@ -460,17 +490,21 @@ public partial class BasicTests
         Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
         Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
 
-        await VerifyStep(tlsf, "01-Free Allocation");
+        AddRecording(tlsf, "01-Free Allocation");
 
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
     [TestMethod]
     public async Task Test64Allocations()
     {
+        Recording.Start();
+
         var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
 
         MemorySize alignment = 64;
@@ -483,21 +517,21 @@ public partial class BasicTests
         {
             allocations[i] = tlsf.Allocate(512);
         }
-        await VerifyStep(tlsf, "01-Allocate");
-        
+        AddRecording(tlsf, "01-Allocate");
+
         for (var i = 0; i < 64; i++)
         {
             tlsf.Free(allocations[i]);
         }
 
-        await VerifyStep(tlsf, "02-Free");
+        AddRecording(tlsf, "02-Free");
 
 
         for (var i = 0; i < 64; i++)
         {
             allocations[i] = tlsf.Allocate(512);
         }
-        await VerifyStep(tlsf, "03-Reallocate");
+        AddRecording(tlsf, "03-Reallocate");
 
 
         for (var i = 0; i < 64; i++)
@@ -505,31 +539,24 @@ public partial class BasicTests
             tlsf.Free(allocations[i]);
         }
 
-        await VerifyStep(tlsf, "04-Free");
-        
+        AddRecording(tlsf, "04-Free");
+
         // Resets the allocator (free chunks)
         tlsf.Reset();
         Assert.AreEqual(0, tlsf.Chunks.Length);
         Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
     }
 
-    private async Task VerifyStep(TlsfAllocator tlsf, string stepName)
+    private void AddRecording(TlsfAllocator tlsf, string stepName)
     {
-        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-        var builder = new StringBuilder();
-
-        var settings = new VerifySettings();
-        settings.UseDirectory("Verified");
-        settings.DisableDiff();
-
+        var builder = new StringBuilder("    ");
         tlsf.Dump(builder);
-        settings.UseMethodName($"{TestContext!.FullyQualifiedTestClassName}.{TestContext.ManagedMethod}.Case_{stepName.Replace(" ", "_")}");
-        
-        var text = builder.ToString().ReplaceLineEndings("\n");
-
-        await Verify(text, settings);
+        var value = builder.ToString().ReplaceLineEndings("\n    ");
+        Recording.Add(stepName, value);
     }
-    
+
     private record struct ChunkAllocationRequest(MemoryChunkId Id, MemoryAddress BaseAddress, MemorySize RequestedSize, MemorySize AllocatedSize);
 
     private class TlsfChunkAllocatorTestInstance : IMemoryChunkAllocator
@@ -551,9 +578,9 @@ public partial class BasicTests
             RequestedChunkAllocations.Clear();
             _nextSize = _baseSize;
         }
-        
+
         public List<ChunkAllocationRequest> RequestedChunkAllocations { get; }
-        
+
         public bool TryAllocateChunk(MemorySize size, out MemoryChunk chunk)
         {
             while (_nextSize < size)
