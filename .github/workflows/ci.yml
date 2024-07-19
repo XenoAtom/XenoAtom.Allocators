@@ -10,14 +10,16 @@ on:
 
 jobs:
   build:
-    uses: xoofx/.github/.github/workflows/dotnet.yml@main
-    secrets:
-      NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
-
-- name: Upload Test Results
-  if: failure()
-  uses: actions/upload-artifact@v4
-  with:
-    name: verify-test-results
-    path: |
-      **/*.received.*
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: "Build, Test and Pack common"
+        uses: xoofx/.github/.github/actions/dotnet-releaser-action@main   
+        with:
+          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+      - name: Upload Test Results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-test-results
+          path: |
+            **/*.received.*
