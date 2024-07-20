@@ -22,15 +22,14 @@ You simply need to implement the interface `IMemoryChunkAllocator` that will pro
 
 For example:
 
-```csharp
-/// <summary>
-/// Implementation of a chunk allocator for the TLSF allocator using native memory.
-/// </summary>
-public unsafe class BasicChunkAllocator : IMemoryChunkAllocator
+<!-- snippet: BasicChunkAllocator -->
+<a id='snippet-BasicChunkAllocator'></a>
+```cs
+private unsafe class BasicChunkAllocator : IMemoryChunkAllocator
 {
-    private readonly Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
+    private readonly Dictionary<int, MemoryChunk> _chunks = new();
     private const int ChunkSize = 65536;
-        
+
     public bool TryAllocateChunk(MemorySize minSize, out MemoryChunk chunk)
     {
         var blockSize = (uint)Math.Max(ChunkSize, (int)minSize.Value);
@@ -42,13 +41,14 @@ public unsafe class BasicChunkAllocator : IMemoryChunkAllocator
 
     public void FreeChunk(MemoryChunkId chunkId)
     {
-        var index = (int)chunkId.Value;
-        var chunk = _chunks[index];
+        var chunk = _chunks[(int)chunkId.Value];
         NativeMemory.AlignedFree((void*)(ulong)chunk.BaseAddress);
-        _chunks.Remove(index);
+        _chunks.Remove((int)chunkId.Value);
     }
 }
 ```
+<sup><a href='/src/XenoAtom.Allocators.Bench/BenchAllocator.cs#L83-L107' title='Snippet source file'>snippet source</a> | <a href='#snippet-BasicChunkAllocator' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 Then you can create a TLSF allocator with this chunk allocator:
 
@@ -71,13 +71,31 @@ The `Allocate` method returns an `TlsfAllocation` structure that represents the 
 
 A TlsfAllocation has the following properties, with Address and Size representing the address and size of the allocated block:
 
-```csharp
+<!-- snippet: TlsfAllocation -->
+<a id='snippet-TlsfAllocation'></a>
+```cs
+/// <summary>
+/// An allocation from a <see cref="TlsfAllocator"/> returned by <see cref="TlsfAllocator.Allocate"/>.
+/// </summary>
 public readonly record struct TlsfAllocation
 {
+    internal TlsfAllocation(TlsfAllocationToken token, MemoryChunkId chunkId, MemoryAddress address, MemorySize size)
+    {
+        Token = token;
+        ChunkId = chunkId;
+        Address = address;
+        Size = size;
+    }
+
     /// <summary>
     /// Gets the index of the block allocated (used internally by the allocator).
     /// </summary>
     public readonly TlsfAllocationToken Token;
+
+    /// <summary>
+    /// Gets the chunk id of this allocated block belongs to.
+    /// </summary>
+    public readonly MemoryChunkId ChunkId;
 
     /// <summary>
     /// Gets the address of the allocated block.
@@ -88,8 +106,15 @@ public readonly record struct TlsfAllocation
     /// Gets the size of the allocated block.
     /// </summary>
     public readonly MemorySize Size;
+
+    /// <summary>
+    /// Implicit conversion to <see cref="TlsfAllocationToken"/>.
+    /// </summary>
+    public static implicit operator TlsfAllocationToken (TlsfAllocation allocation) => allocation.Token;
 }
 ```
+<sup><a href='/src/XenoAtom.Allocators/TlsfAllocation.cs#L7-L48' title='Snippet source file'>snippet source</a> | <a href='#snippet-TlsfAllocation' title='Start of snippet'>anchor</a></sup>
+<!-- endSnippet -->
 
 [:top:](#xenoatomallocators-user-guide)
 ### Freeing memory

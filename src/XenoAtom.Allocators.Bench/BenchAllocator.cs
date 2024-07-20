@@ -18,7 +18,7 @@ public class BenchAllocator
     private Random _random = new Random();
 
     private static int[] AllocSizes = [64, 96, 150, 200, 400, 1024, 4096];
-    
+
     private const int AllocationCount = 2048;
 
     [GlobalSetup]
@@ -80,11 +80,13 @@ public class BenchAllocator
         }
     }
 
+    #region BasicChunkAllocator
+
     private unsafe class BasicChunkAllocator : IMemoryChunkAllocator
     {
-        private readonly Dictionary<int, MemoryChunk> _chunks = new Dictionary<int, MemoryChunk>();
+        private readonly Dictionary<int, MemoryChunk> _chunks = new();
         private const int ChunkSize = 65536;
-        
+
         public bool TryAllocateChunk(MemorySize minSize, out MemoryChunk chunk)
         {
             var blockSize = (uint)Math.Max(ChunkSize, (int)minSize.Value);
@@ -101,4 +103,6 @@ public class BenchAllocator
             _chunks.Remove((int)chunkId.Value);
         }
     }
+
+    #endregion
 }

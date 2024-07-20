@@ -4,6 +4,8 @@
 
 namespace XenoAtom.Allocators;
 
+#region TlsfAllocation
+
 /// <summary>
 /// An allocation from a <see cref="TlsfAllocator"/> returned by <see cref="TlsfAllocator.Allocate"/>.
 /// </summary>
@@ -26,7 +28,7 @@ public readonly record struct TlsfAllocation
     /// Gets the chunk id of this allocated block belongs to.
     /// </summary>
     public readonly MemoryChunkId ChunkId;
-    
+
     /// <summary>
     /// Gets the address of the allocated block.
     /// </summary>
@@ -42,3 +44,5 @@ public readonly record struct TlsfAllocation
     /// </summary>
     public static implicit operator TlsfAllocationToken (TlsfAllocation allocation) => allocation.Token;
 }
+
+#endregion
