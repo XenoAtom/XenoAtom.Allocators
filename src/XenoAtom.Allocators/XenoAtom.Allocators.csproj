@@ -33,10 +33,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="$(AssemblyName).Tests" />
-    <PackageReference Include="MinVer" Version="5.0.0">
+    <PackageReference Include="MinVer">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="XenoAtom.Collections" Version="1.1.0" />
+    <PackageReference Include="XenoAtom.Collections" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="BenchmarkDotNet" Version="0.13.12" />
+    <PackageVersion Include="MinVer" Version="5.0.0" />
+    <PackageVersion Include="MSTest" Version="3.5.0" />
+    <PackageVersion Include="Verify.DiffPlex" Version="3.1.0" />
+    <PackageVersion Include="Verify.MSTest" Version="25.3.2" />
+    <PackageVersion Include="XenoAtom.Collections" Version="1.1.0" />
+  </ItemGroup>
+</Project>
