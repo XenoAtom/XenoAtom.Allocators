@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "00-General", "00-General", 
 		global.json = global.json
 		..\license.txt = ..\license.txt
 		..\readme.md = ..\readme.md
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "01-Documentation", "01-Documentation", "{0C574DCF-D302-4F79-8C53-5BE9B674483C}"
