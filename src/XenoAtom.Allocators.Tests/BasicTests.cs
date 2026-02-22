@@ -549,6 +549,58 @@ public partial class BasicTests
         await Verify();
     }
 
+    [TestMethod]
+    public async Task TestLargeAllocation()
+    {
+        Recording.Start();
+
+        var allocator = new TlsfChunkAllocatorTestInstance(BaseAddress, BaseChunkSize);
+
+        MemorySize alignment = 64;
+        var tlsf = new TlsfAllocator(allocator, alignment);
+
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+
+        MemorySize size1 = 32768;
+        MemorySize size2 = 17408;
+        var allocation1 = tlsf.Allocate(size1);
+        var allocation2 = tlsf.Allocate(size2);
+
+        // General checks
+        Assert.AreEqual(1, allocator.RequestedChunkAllocations.Count);
+        Assert.AreEqual(1, tlsf.Chunks.Length);
+        Assert.AreEqual((MemoryChunkId)0, tlsf.Chunks[0].Info.Id);
+        Assert.AreEqual(BaseAddress, tlsf.Chunks[0].Info.BaseAddress);
+        Assert.AreEqual(BaseChunkSize, tlsf.Chunks[0].Info.Size);
+        Assert.AreEqual(2U, tlsf.Chunks[0].UsedBlockCount);
+        Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
+        Assert.AreEqual(allocation1.Size + allocation2.Size, tlsf.Chunks[0].TotalAllocated);
+
+        // Allocation 1
+        Assert.AreEqual(BaseAddress, allocation1.Address);
+        Assert.AreEqual(size1, allocation1.Size);
+
+        // Allocation 2
+        Assert.AreEqual(BaseAddress + size1, allocation2.Address);
+        Assert.AreEqual(size2, allocation2.Size);
+
+        AddRecording(tlsf, "01-Allocations");
+
+        tlsf.Free(allocation1);
+        tlsf.Free(allocation2);
+        Assert.AreEqual(0U, tlsf.Chunks[0].UsedBlockCount);
+        Assert.AreEqual(1U, tlsf.Chunks[0].FreeBlockCount);
+
+        AddRecording(tlsf, "02-Free Allocations");
+
+        // Resets the allocator (free chunks)
+        tlsf.Reset();
+        Assert.AreEqual(0, tlsf.Chunks.Length);
+        Assert.AreEqual(0, allocator.RequestedChunkAllocations.Count);
+
+        await Verify();
+    }
+
     private void AddRecording(TlsfAllocator tlsf, string stepName)
     {
         var builder = new StringBuilder("    ");

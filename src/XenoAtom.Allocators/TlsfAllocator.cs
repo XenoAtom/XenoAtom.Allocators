@@ -560,9 +560,14 @@ public sealed unsafe class TlsfAllocator
 
     private ref Block TryFindSuitableBlock(uint size, ref int firstLevelIndex, ref int secondLevelIndex, out int blockIndex)
     {
-        findFirstLevel:
+        int originalFirstLevelIndex = firstLevelIndex;
         firstLevelIndex = _bins.GetFirstLevelIndexAvailableAt(firstLevelIndex);
+        if (firstLevelIndex > originalFirstLevelIndex)
+        {
+            secondLevelIndex = 0;
+        }
 
+        findFirstLevel:
         // If we don't have a block in higher level directory, we need to allocate a new chunk
         if (firstLevelIndex < 0)
         {
@@ -612,8 +617,8 @@ public sealed unsafe class TlsfAllocator
             // to 1) find an existing level directory with a free block or 2) allocate a new chunk
             if (localSecondLevelIndex < 0)
             {
+                firstLevelIndex = _bins.GetFirstLevelIndexAvailableAt(firstLevelIndex + 1);
                 secondLevelIndex = 0;
-                firstLevelIndex++;
                 goto findFirstLevel;
             }
 
@@ -629,8 +634,8 @@ public sealed unsafe class TlsfAllocator
             // In both cases, the first level is 3, and the second level is 0, but the block with a size of (16384 - 128) is not enough for the requested size (16384 - 64)
             if (block.Size < size)
             {
+                firstLevelIndex = _bins.GetFirstLevelIndexAvailableAt(firstLevelIndex + 1);
                 secondLevelIndex = 0;
-                firstLevelIndex++;
                 goto findFirstLevel;
             }
             return ref block;
