@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/00-General/">
+    <File Path="../.editorconfig" />
+    <File Path="../.gitattributes" />
+    <File Path="../.github/workflows/ci.yml" />
+    <File Path="../.gitignore" />
+    <File Path="../license.txt" />
+    <File Path="../readme.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.bak" />
+    <File Path="Directory.Packages.props" />
+    <File Path="dotnet-releaser.toml" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/01-Documentation/">
+    <File Path="../doc/readme.md" />
+  </Folder>
+  <Project Path="XenoAtom.Allocators.Bench/XenoAtom.Allocators.Bench.csproj" />
+  <Project Path="XenoAtom.Allocators.Tests/XenoAtom.Allocators.Tests.csproj" />
+  <Project Path="XenoAtom.Allocators/XenoAtom.Allocators.csproj" />
+</Solution>

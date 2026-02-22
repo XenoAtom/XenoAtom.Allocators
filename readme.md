@@ -2,7 +2,7 @@
 
 <img align="right" width="160px" height="160px" src="https://raw.githubusercontent.com/XenoAtom/XenoAtom.Allocators/main/img/XenoAtom.Allocators.png">
 
-This library provides fast, lightweight and low-level memory allocators for .NET.
+XenoAtom.Allocators is a fast, lightweight and low-level memory allocator for .NET.
 
 ## ✨ Features
 
