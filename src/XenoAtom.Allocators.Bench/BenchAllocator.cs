@@ -12,7 +12,7 @@ public class BenchAllocator
 {
     private static readonly BasicChunkAllocator _instance = new BasicChunkAllocator();
 
-    private TlsfAllocator _tlsfAllocator;
+    private TlsfAllocator? _tlsfAllocator;
     private UnsafeList<TlsfAllocationToken> _tlsfLocalList = new();
     private UnsafeList<nint> _libcLocalList = new();
     private Random _random = new Random();
@@ -33,7 +33,7 @@ public class BenchAllocator
     public void Cleanup()
     {
         Console.WriteLine("Cleanup");
-        _tlsfAllocator.Reset();
+        _tlsfAllocator!.Reset();
     }
 
     private uint GetNextRandomSize() => (uint)AllocSizes[_random.Next(AllocSizes.Length)];
@@ -46,19 +46,13 @@ public class BenchAllocator
 
         for (int i = 0; i < AllocationCount; i++)
         {
-            lock (_tlsfAllocator) // Make it more fair to the libc benchmark
-            {
-                var allocate = _tlsfAllocator.Allocate(GetNextRandomSize());
-                localList.Add(allocate);
-            }
+            var allocate = _tlsfAllocator!.Allocate(GetNextRandomSize());
+            localList.Add(allocate);
         }
 
         for(int i = 0; i < localList.Count; i++)
         {
-            lock (_tlsfAllocator) // Make it more fair to the libc benchmark
-            {
-                _tlsfAllocator.Free(localList[i]);
-            }
+            _tlsfAllocator!.Free(localList[i]);
         }
     }
 
